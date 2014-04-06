@@ -1,0 +1,10 @@
+Assumptions:
+    Wind is uniform across environment (but varies each frame within range of prevailing wind)
+    All angle measurements are in radians in range [-pi, pi] unless reported (which will be degrees)
+    true_sailboat is only visible to environment
+    Environment assigns an id for a boat and keeps track of its real-world position
+
+    Todo's are listed in code
+
+Jonathan: I will flush out the rest of the initial environment.
+
