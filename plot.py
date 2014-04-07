@@ -76,3 +76,20 @@ class plot:
             return
 
         self.subplot.plot(location[1], location[0], color='white', marker='o')
+
+    def true_boat(self, location):
+        global can_plot
+        if not can_plot:
+            return
+
+        self.subplot.plot(location[1], location[0], color='black', marker='x')
+
+
+    def line(self, loc1, loc2, color='black'):
+        global can_plot
+        if not can_plot:
+            return
+
+        self.subplot.plot((loc1[1], loc2[1]), (loc1[0], loc2[0]), color=color)
+
+

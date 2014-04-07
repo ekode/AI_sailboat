@@ -19,7 +19,7 @@ class true_sailboat:
     #       boom_control_error: proportion of boom control error (see adjust_boom)
     #       rudder_control_error: proportion of rudder control error (see adjust_rudder)
     #
-    def __init__(self, location, boom_control_error, rudder_control_error):
+    def __init__(self, location, boom_control_error=0.05, rudder_control_error=0.05):
         self.location = location
         self.boom = 0
         self.rudder = 0

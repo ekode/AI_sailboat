@@ -55,6 +55,8 @@ class environment:
         # create a semi random course
         self.__create_random_course(num_course_marks)
 
+        self.boats = []
+
         # todo: calculate initial wind
         self.current_wind = self.wind_prevailing
 
@@ -75,16 +77,17 @@ class environment:
 
 
     # ------------
-    # add_boat:
-    #   add a boat at the start
+    # create_boat:
+    #   create a boat at the start
     #   give enough space if this is an additional boat
     #   return id (index) of boat
     #
-    def add_boat(self):
-        # todo: create a boat at start location
-        # todo: add to boat list
-        # todo: return boat index
-        pass
+    def create_boat(self):
+        mid_start_angle = utilsmath.normalize_angle((self.course[0][1] + self.course[1][1]) / 2)
+        start_dist = self.course[0][0]
+        boat = true_sailboat.true_sailboat((start_dist, mid_start_angle))
+        self.boats.append(boat)
+        return len(self.boats) - 1
 
     # wind:
     #   return current wind velocity and direction
@@ -99,13 +102,15 @@ class environment:
         pass
 
     # measure_landmark:
-    #   return the location (radius, angle) of the landmark and measurement relative to the sailboat (distance, angle)
-    #       sailboat: the sailboat to make measurements
-    #       landmark_index: the index of landmark to measure
-    def measure_landmark(self, sailboat, landmark_index):
-        # todo: calculate actual distance, angle
-        # todo: adjust actual by measurement error
-        return ((1.0, 0.0), (1.0, 0.0))
+    #   return the measurement relative to the sailboat (distance, angle)
+    #       boat_id: the id of the true_sailboat to make measurements
+    #       landmark: the landmark to measure
+    def measure_landmark(self, boat_id, landmark):
+        boat = self.boats[boat_id]
+        measurement = utilsmath.calculate_distance_angle(boat.location, landmark)
+        radius_error = random.gauss(1, self.measurement_error)
+        angle_error = random.gauss(1, self.measurement_error)
+        return (measurement[0] * radius_error, measurement[1] * angle_error)
 
     # measure_boom:
     #   return the angle of the boom for specified sailboat_index
@@ -147,26 +152,34 @@ class environment:
 
 
     def plot(self):
-        plotter = plot.plot()
-        plotter.start()
+        self.plotter = plot.plot()
+        self.plotter.start()
 
         # draw arrow for start direction
         mid_start_angle = utilsmath.normalize_angle((self.course[0][1] + self.course[1][1]) / 2)
         far_dist = self.course[0][0]
         near_dist = self.course[0][0] - self.course_range / 10.
-        plotter.arrow((mid_start_angle, far_dist), (mid_start_angle, near_dist))
+        self.plotter.arrow((mid_start_angle, far_dist), (mid_start_angle, near_dist))
 
         for mark in self.course:
-            plotter.mark(mark[0], mark[1], mark[2])
+            self.plotter.mark(mark[0], mark[1], mark[2])
 
         for landmark in self.landmarks:
-            plotter.landmark(landmark)
-
-        plotter.show()
+            self.plotter.landmark(landmark)
 
     
 # if environment.py is run as a script, run some tests
 if __name__== '__main__':
     env = environment()
     env.plot()
+
+    boat_id = env.create_boat()
+    env.measure_landmark(boat_id, env.landmarks[0])
+
+    env.plotter.true_boat(env.boats[boat_id].location)
+    env.plotter.line(env.boats[boat_id].location, env.landmarks[0])
+    measurement = env.measure_landmark(boat_id, env.landmarks[0])
+    print "boat to landmark:{0}".format(utilsmath.format_location(measurement))
+
+    env.plotter.show()
 
