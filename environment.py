@@ -8,8 +8,23 @@
 # Authors: Jonathan Hudgins <jhudgins8@gatech.edu>, Igor Negovetic
 #
  
+# standard libs
 from math import *
 import random
+
+# project libs
+import utilsmath
+import true_sailboat
+
+try:
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    subplot = fig.add_subplot(111, polar=True)
+except ImportError, e:
+    print "No plotting because: {0}".format(e)
+    subplot = None
+
 
 class environment:
 
@@ -20,36 +35,52 @@ class environment:
     #       wind_distribution: distribution (std. dev.) of wind (velocity, angle)
     #       wind_variability: proportion to change the wind each frame
     #       measurement_error: proportion of measurement error (distance, angle)
-    #       landmarks: list of landmarks ((radius0, angle0), ...)
-    #       course: list of course bouys ((radius0, angle0, pass_on_right), ...)
+    #       num_landmarks: number of random landmarks
+    #       num_course_marks: number of course marks (excluding start and finish gates) to cross
+    #       course_range: size of course (radius extent)
     #
     def __init__(self, wind_prevailing=None, wind_distribution=None, wind_variability=0.02, measurement_error=0.05,
-                    landmarks=None, course=None):
+            num_landmarks=5, num_course_marks=5, course_range=100):
 
         self.wind_prevailing = wind_prevailing
         self.wind_distribution = wind_distribution
         self.wind_variability = wind_variability
         self.measurement_error = measurement_error
-        self.landmarks = landmarks
-        self.course = course
+        self.course_range = course_range
 
         # set reasonable defaults based on random when None is specified
         if self.wind_prevailing == None:
-            self.wind_prevailing = (random.random(), (random.random()-0.5) * 2 * pi)
+            self.wind_prevailing = (random.random(), utilsmath.random_angle())
 
-        if self.wind_distribution === None:
+        if self.wind_distribution == None:
             self.wind_distribution = (0.1, pi / 4)
 
-        if self.landmarks == None:
-            for i in range(10):
-                self.landmarks = (random.random() * 100, (random.random()-0.5) * 2 * pi)
+        self.landmarks = []
+        for i in range(num_landmarks):
+            radius = random.random() * self.course_range
+            angle = (random.random()-0.5) * 2 * pi
+            self.landmarks.append((radius, angle))
 
-        # todo: create a semi random course
-        if self.course == None:
-            pass
+        # create a semi random course
+        self.__create_random_course(num_course_marks)
 
         # todo: calculate initial wind
         self.current_wind = self.wind_prevailing
+
+    def __create_random_course(self, num_course_marks):
+        # create start gate ~10 units wide
+        start_angle = utilsmath.random_angle() 
+        start2_angle = utilsmath.normalize_angle(start_angle + atan2(10.0, self.course_range))
+        self.course = [] 
+        self.course.append((0.98 * self.course_range, start_angle, True))
+        self.course.append((0.98 * self.course_range, start2_angle, False))
+
+        # todo: fill in random course spots
+
+        end_angle = utilsmath.normalize_angle(start_angle + pi)
+        end2_angle = utilsmath.normalize_angle(end_angle + atan2(10.0, self.course_range))
+        self.course.append((0.98 * self.course_range, end_angle, False))
+        self.course.append((0.98 * self.course_range, end2_angle, True))
 
 
     # ------------
@@ -122,4 +153,45 @@ class environment:
     def next_marks(self, sailboat_index):
         # todo: return rudder angle for sailboat_index
         return (10, 0, True),
+
+    def arrow(self, start, finish):
+        subplot.annotate("", xytext=start, xy=finish, arrowprops=dict(arrowstyle="->", facecolor='black'))
+
+    def plot(self):
+        if not subplot:
+            return
+        
+        # draw arrow for start direction
+
+        mid_start_angle = utilsmath.normalize_angle((self.course[0][1] + self.course[1][1]) / 2)
+        far_dist = self.course[0][0]
+        near_dist = self.course[0][0] - self.course_range / 10.
+        self.arrow((mid_start_angle, far_dist), (mid_start_angle, near_dist))
+
+        print self.course[0]
+        print self.course[1]
+        print mid_start_angle
+        print far_dist
+        print near_dist
+
+        #subplot.arrow(mid_start_angle, far_dist, mid_start_angle, near_dist, head_width=0.5, fc='k', ec='k')
+
+        for mark in self.course:
+            # conform to standards from http://www.sailing.org/tools/documents/ISAFRRS20132016Final-[13376].pdf
+            if mark[2]:
+                color = 'red'
+                shape = 's' # square
+            else:
+                color = 'green'
+                shape = '^' # triagle up
+
+            subplot.plot(mark[1], mark[0], color=color, marker=shape)
+
+        plt.show()
+
     
+# if environment.py is run as a script, run some tests
+if __name__== '__main__':
+    env = environment()
+    env.plot()
+
