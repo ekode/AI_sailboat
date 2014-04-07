@@ -157,9 +157,10 @@ class environment:
         plotter.arrow((mid_start_angle, far_dist), (mid_start_angle, near_dist))
 
         for mark in self.course:
-            plotter.mark(mark[1], mark[0], mark[2])
+            plotter.mark(mark[0], mark[1], mark[2])
 
-        # todo: plot landmarks
+        for landmark in self.landmarks:
+            plotter.landmark(landmark)
 
         plotter.show()
 

@@ -48,7 +48,7 @@ class plot:
 
         plt.show()
 
-    def mark(self, angle, radius, to_port):
+    def mark(self, radius, angle, to_port):
         global can_plot
         if not can_plot:
             return
@@ -70,3 +70,9 @@ class plot:
 
         self.subplot.annotate("", xytext=start, xy=finish, arrowprops=dict(arrowstyle="->", facecolor='black'))
 
+    def landmark(self, location):
+        global can_plot
+        if not can_plot:
+            return
+
+        self.subplot.plot(location[1], location[0], color='white', marker='o')
