@@ -15,16 +15,7 @@ import random
 # project libs
 import utilsmath
 import true_sailboat
-
-try:
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    subplot = fig.add_subplot(111, polar=True)
-except ImportError, e:
-    print "No plotting because: {0}".format(e)
-    subplot = None
-
+import plot
 
 class environment:
 
@@ -154,40 +145,23 @@ class environment:
         # todo: return rudder angle for sailboat_index
         return (10, 0, True),
 
-    def arrow(self, start, finish):
-        subplot.annotate("", xytext=start, xy=finish, arrowprops=dict(arrowstyle="->", facecolor='black'))
 
     def plot(self):
-        if not subplot:
-            return
-        
-        # draw arrow for start direction
+        plotter = plot.plot()
+        plotter.start()
 
+        # draw arrow for start direction
         mid_start_angle = utilsmath.normalize_angle((self.course[0][1] + self.course[1][1]) / 2)
         far_dist = self.course[0][0]
         near_dist = self.course[0][0] - self.course_range / 10.
-        self.arrow((mid_start_angle, far_dist), (mid_start_angle, near_dist))
-
-        print self.course[0]
-        print self.course[1]
-        print mid_start_angle
-        print far_dist
-        print near_dist
-
-        #subplot.arrow(mid_start_angle, far_dist, mid_start_angle, near_dist, head_width=0.5, fc='k', ec='k')
+        plotter.arrow((mid_start_angle, far_dist), (mid_start_angle, near_dist))
 
         for mark in self.course:
-            # conform to standards from http://www.sailing.org/tools/documents/ISAFRRS20132016Final-[13376].pdf
-            if mark[2]:
-                color = 'red'
-                shape = 's' # square
-            else:
-                color = 'green'
-                shape = '^' # triagle up
+            plotter.mark(mark[1], mark[0], mark[2])
 
-            subplot.plot(mark[1], mark[0], color=color, marker=shape)
+        # todo: plot landmarks
 
-        plt.show()
+        plotter.show()
 
     
 # if environment.py is run as a script, run some tests
