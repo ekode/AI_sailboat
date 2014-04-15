@@ -5,7 +5,7 @@
 # Uses polar coordinates
 # Angle is standardized in radians in the range [-pi, pi]
 #
-# Authors: Jonathan Hudgins <jhudgins8@gatech.edu>, Igor Negovetic
+# Authors: Jonathan Hudgins <jhudgins8@gatech.edu>, Igor Negovetic <igorilla@gmail.com>
 #
  
 # standard libs
@@ -16,32 +16,37 @@ import random
 import utilsmath
 import true_sailboat
 import plot
+import sim_config
 
 class environment:
 
     # --------
     # init: 
     #   creates the environment
-    #       wind_prevailing: prevailing wind (velocity, angle)
-    #       wind_distribution: distribution (std. dev.) of wind (velocity, angle)
+    #       wind_prevailing: prevailing wind (speed, angle)
+    #       wind_distribution: distribution (std. dev.) of wind (speed, angle)
     #       wind_variability: proportion to change the wind each frame
+    #       wind_max: maximum wind speed (mph)
     #       measurement_error: proportion of measurement error (distance, angle)
     #       num_landmarks: number of random landmarks
     #       num_course_marks: number of course marks (excluding start and finish gates) to cross
     #       course_range: size of course (radius extent)
     #
-    def __init__(self, wind_prevailing=None, wind_distribution=None, wind_variability=0.02, measurement_error=0.05,
+    def __init__(self, wind_prevailing=None, wind_distribution=None, wind_variability=0.02, wind_max=30, wind_min=5,  measurement_error=0.05,
             num_landmarks=5, num_course_marks=5, course_range=100):
 
         self.wind_prevailing = wind_prevailing
         self.wind_distribution = wind_distribution
         self.wind_variability = wind_variability
+        self.wind_max = wind_max
+        self.wind_min = wind_min
         self.measurement_error = measurement_error
         self.course_range = course_range
+        self.start_heading = 0.0
 
         # set reasonable defaults based on random when None is specified
         if self.wind_prevailing == None:
-            self.wind_prevailing = (random.random(), utilsmath.random_angle())
+            self.wind_prevailing = (random.uniform(self.wind_min, self.wind_max), utilsmath.random_angle())
 
         if self.wind_distribution == None:
             self.wind_distribution = (0.1, pi / 4)
@@ -60,10 +65,14 @@ class environment:
         # todo: calculate initial wind
         self.current_wind = self.wind_prevailing
 
+
     def __create_random_course(self, num_course_marks):
         # create start gate ~10 units wide
-        start_angle = utilsmath.random_angle() 
+
+        start_angle = utilsmath.random_angle()
+
         start2_angle = utilsmath.normalize_angle(start_angle + atan2(10.0, self.course_range))
+        self.start_heading = utilsmath.normalize_angle(start_angle + pi)
         self.course = [] 
         self.course.append((0.98 * self.course_range, start_angle, True))
         self.course.append((0.98 * self.course_range, start2_angle, False))
@@ -78,28 +87,55 @@ class environment:
 
     # ------------
     # create_boat:
-    #   create a boat at the start
+    #   create a true world representation of boat at the start
     #   give enough space if this is an additional boat
     #   return id (index) of boat
     #
     def create_boat(self):
         mid_start_angle = utilsmath.normalize_angle((self.course[0][1] + self.course[1][1]) / 2)
         start_dist = self.course[0][0]
-        boat = true_sailboat.true_sailboat((start_dist, mid_start_angle))
+        boat = true_sailboat.true_sailboat((start_dist, mid_start_angle), self.start_heading)
         self.boats.append(boat)
+        if sim_config.print_boat_data:
+            print 'initializing boat', len(self.boats)-1, boat.location, 'heading', boat.heading
+
         return len(self.boats) - 1
 
     # wind:
-    #   return current wind velocity and direction
+    #   return current wind speed and direction
     def wind(self):
         return self.current_wind
 
+    # change_wind
+    #   change wind speed and direction
+    def change_wind(self):
+        # todo: implement change_wind
+        # todo: update wind (1-a)*current + a*new_random (based on prevailing and distribution)
+        new_wind = self.current_wind
+
+        return new_wind
+
     # update:
     #   update the environment
-    def update(self):
-        # todo: update wind (1-a)*current + a*new_random (based on prevailing and distribution)
-        # todo: upate all boat positions
+    def update(self, controls):
+
+        if sim_config.print_env_data:
+            print ' '
+            print 'wind', self.current_wind
+
+        for boat_id in range(len(controls)):
+            self.boats[boat_id].update(self, controls[boat_id])
+            self.plotter.true_boat(self.boats[boat_id].location)
+
+            if sim_config.print_boat_data:
+                print ' '
+                print 'boat', boat_id
+                print 'position', self.boats[boat_id].location
+                print 'heading', self.boats[boat_id].heading
+                print 'wind angle', self.boats[boat_id].relative_wind_angle
+                print 'speed', self.boats[boat_id].speed
         pass
+
 
     # measure_landmark:
     #   return the measurement relative to the sailboat (distance, angle)

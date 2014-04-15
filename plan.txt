@@ -4,7 +4,15 @@ Assumptions:
     true_sailboat is only visible to environment
     Environment assigns an id for a boat and keeps track of its real-world position
 
+    Wind direction determines which way the wind blows (down along that direction), NOT from which direction it blows. For
+    example, wind direction 0 means the wind blows from the origin, to the right.
+
     Todo's are listed in code
+
+    Rudder angle:
+        When boat goes straight, the rudder is at position 0.
+        When boat turns full left (turns counter-clockwise), the rudder is at pi/2
+        When boat turns full right (turns clockwise), the rudder is at -pi/2
 
 Jonathan: I will flush out the rest of the initial environment.
 

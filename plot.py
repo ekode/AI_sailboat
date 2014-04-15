@@ -5,7 +5,7 @@
 # Uses polar coordinates
 # Angle is standardized in radians in the range [-pi, pi]
 #
-# Authors: Jonathan Hudgins <jhudgins8@gatech.edu>, Igor Negovetic
+# Authors: Jonathan Hudgins <jhudgins8@gatech.edu>, Igor Negovetic <igorilla@gmail.com>
 #
  
 # standard libs
@@ -63,12 +63,13 @@ class plot:
 
         self.subplot.plot(angle, radius, color=color, marker=shape)
 
-    def arrow(self, start, finish):
+    def arrow(self, start, finish, color='black'):
         global can_plot
         if not can_plot:
             return
 
-        self.subplot.annotate("", xytext=start, xy=finish, arrowprops=dict(arrowstyle="->", facecolor='black'))
+        #self.subplot.annotate("", xytext=start, xy=finish, arrowprops=dict(arrowstyle="->", facecolor='g'))
+        self.subplot.annotate("", xytext=start, xy=finish, arrowprops=dict(arrowstyle="->", color=color))
 
     def landmark(self, location):
         global can_plot

@@ -1,21 +1,25 @@
 # 
 # Math Utils for Sailboat project
 # 
-# Authors: Jonathan Hudgins <jhudgins8@gatech.edu>, Igor Negovetic
+# Authors: Jonathan Hudgins <jhudgins8@gatech.edu>, Igor Negovetic <igorilla@gmail.com>
 #
  
 import random
 from math import *
 
+
 def normalize_angle(angle):
+    # maps angle onto [-pi, pi]
     while (angle < -pi):
         angle += 2*pi
     while (angle > pi):
         angle -= 2*pi
     return angle
 
+
 def random_angle():
     return (random.random()-0.5) * 2 * pi
+
 
 # -------------------------
 # calculate_distance_angle:
@@ -30,14 +34,36 @@ def calculate_distance_angle(loc1, loc2):
 def deg(angle):
     return (angle / pi * 180.)
 
+
 def rad(angle):
     return (angle / 180. * pi)
+
 
 def format_location(loc):
     return "({0}, {1:.1f}deg)".format(loc[0], deg(loc[1]))
 
+
 def approx_equal(v1, v2):
     return abs(v1 - v2) <= max(abs(v1), abs(v2)) * 0.00001
+
+
+def add_vectors_polar(v1, v2):
+    v1x = v1[0] * cos(v1[1])
+    v1y = v1[0] * sin(v1[1])
+    v2x = v2[0] * cos(v2[1])
+    v2y = v2[0] * sin(v2[1])
+
+    rx = v1x + v2x
+    ry = v1y + v2y
+
+    r = sqrt(rx**2 + ry**2)
+
+    a = acos(rx/r)
+    if ry < 0:
+        a = -a
+
+    return (r, a)
+
 
 # if utilsmath.py is run as a script, run some tests
 if __name__== '__main__':
