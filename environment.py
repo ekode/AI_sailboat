@@ -23,42 +23,25 @@ class environment:
     # --------
     # init: 
     #   creates the environment
-    #       wind_prevailing: prevailing wind (speed, angle)
-    #       wind_distribution: distribution (std. dev.) of wind (speed, angle)
-    #       wind_variability: proportion to change the wind each frame
-    #       wind_max: maximum wind speed (mph)
-    #       measurement_error: proportion of measurement error (distance, angle)
-    #       num_landmarks: number of random landmarks
-    #       num_course_marks: number of course marks (excluding start and finish gates) to cross
-    #       course_range: size of course (radius extent)
     #
-    def __init__(self, wind_prevailing=None, wind_distribution=None, wind_variability=0.02, wind_max=30, wind_min=5,  measurement_error=0.05,
-            num_landmarks=5, num_course_marks=5, course_range=100):
+    def __init__(self):
 
-        self.wind_prevailing = wind_prevailing
-        self.wind_distribution = wind_distribution
-        self.wind_variability = wind_variability
-        self.wind_max = wind_max
-        self.wind_min = wind_min
-        self.measurement_error = measurement_error
-        self.course_range = course_range
         self.start_heading = 0.0
+        self.course = []
 
         # set reasonable defaults based on random when None is specified
-        if self.wind_prevailing == None:
-            self.wind_prevailing = (random.uniform(self.wind_min, self.wind_max), utilsmath.random_angle())
+        if sim_config.wind_prevailing is None:
+            self.wind_prevailing = (random.uniform(sim_config.wind_min, sim_config.wind_max), utilsmath.random_angle())
 
-        if self.wind_distribution == None:
-            self.wind_distribution = (0.1, pi / 4)
-
+        # todo: potentially remove landmarks? Since we have course markers, what do we need land markers for?
         self.landmarks = []
-        for i in range(num_landmarks):
-            radius = random.random() * self.course_range
+        for i in range(sim_config.num_landmarks):
+            radius = random.random() * sim_config.course_range
             angle = (random.random()-0.5) * 2 * pi
             self.landmarks.append((radius, angle))
 
         # create a semi random course
-        self.__create_random_course(num_course_marks)
+        self.__create_random_course()
 
         self.boats = []
 
@@ -66,23 +49,23 @@ class environment:
         self.current_wind = self.wind_prevailing
 
 
-    def __create_random_course(self, num_course_marks):
+    def __create_random_course(self):
         # create start gate ~10 units wide
 
         start_angle = utilsmath.random_angle()
 
-        start2_angle = utilsmath.normalize_angle(start_angle + atan2(10.0, self.course_range))
+        start2_angle = utilsmath.normalize_angle(start_angle + atan2(10.0, sim_config.course_range))
         self.start_heading = utilsmath.normalize_angle(start_angle + pi)
-        self.course = [] 
-        self.course.append((0.98 * self.course_range, start_angle, True))
-        self.course.append((0.98 * self.course_range, start2_angle, False))
+        self.course = []
+        self.course.append((0.98 * sim_config.course_range, start_angle, True))
+        self.course.append((0.98 * sim_config.course_range, start2_angle, False))
 
         # todo: fill in random course spots
 
         end_angle = utilsmath.normalize_angle(start_angle + pi)
-        end2_angle = utilsmath.normalize_angle(end_angle + atan2(10.0, self.course_range))
-        self.course.append((0.98 * self.course_range, end_angle, False))
-        self.course.append((0.98 * self.course_range, end2_angle, True))
+        end2_angle = utilsmath.normalize_angle(end_angle + atan2(10.0, sim_config.course_range))
+        self.course.append((0.98 * sim_config.course_range, end_angle, False))
+        self.course.append((0.98 * sim_config.course_range, end2_angle, True))
 
 
     # ------------
@@ -144,9 +127,9 @@ class environment:
     def measure_landmark(self, boat_id, landmark):
         boat = self.boats[boat_id]
         measurement = utilsmath.calculate_distance_angle(boat.location, landmark)
-        radius_error = random.gauss(1, self.measurement_error)
-        angle_error = random.gauss(1, self.measurement_error)
-        return (measurement[0] * radius_error, measurement[1] * angle_error)
+        radius_error = random.gauss(1, sim_config.course_marker_error)
+        angle_error = random.gauss(1, sim_config.course_marker_error)
+        return measurement[0] * radius_error, measurement[1] * angle_error
 
     # measure_boom:
     #   return the angle of the boom for specified sailboat_index
@@ -194,7 +177,7 @@ class environment:
         # draw arrow for start direction
         mid_start_angle = utilsmath.normalize_angle((self.course[0][1] + self.course[1][1]) / 2)
         far_dist = self.course[0][0]
-        near_dist = self.course[0][0] - self.course_range / 10.
+        near_dist = self.course[0][0] - sim_config.course_range / 10.
         self.plotter.arrow((mid_start_angle, far_dist), (mid_start_angle, near_dist))
 
         for mark in self.course:
@@ -205,7 +188,7 @@ class environment:
 
     
 # if environment.py is run as a script, run some tests
-if __name__== '__main__':
+if __name__ == '__main__':
     env = environment()
     env.plot()
 
