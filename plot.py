@@ -48,20 +48,23 @@ class plot:
 
         plt.show()
 
-    def mark(self, radius, angle, to_port):
+    def mark(self, mark, count):
         global can_plot
         if not can_plot:
             return
 
         # conform to standards from http://www.sailing.org/tools/documents/ISAFRRS20132016Final-[13376].pdf
-        if to_port:
+        if mark.to_port:
             color = 'red'
             shape = 's' # square
         else: # starboard
             color = 'green'
             shape = '^' # triagle up
 
-        self.subplot.plot(angle, radius, color=color, marker=shape)
+        self.subplot.plot(mark.angle, mark.dist, color=color, marker=shape)
+
+        if count != -1:
+            self.subplot.text(mark.angle, mark.dist, '{0}'.format(count), color=color)
 
     def arrow(self, start, finish, color='black'):
         global can_plot

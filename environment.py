@@ -18,6 +18,12 @@ import true_sailboat
 import plot
 import sim_config
 
+class course_mark:
+    def __init__(self, dist, angle, to_port):
+        self.dist = dist
+        self.angle = angle
+        self.to_port = to_port
+
 class environment:
 
     # --------
@@ -34,6 +40,8 @@ class environment:
             self.wind_prevailing = (random.uniform(sim_config.wind_min, sim_config.wind_max), utilsmath.random_angle())
 
         # todo: potentially remove landmarks? Since we have course markers, what do we need land markers for?
+        # jhudgins: I think we can get more interesting results by separating landmarks from course markers.
+        #           This way we can change the number of landmarks and see how it effects the simulation.
         self.landmarks = []
         for i in range(sim_config.num_landmarks):
             radius = random.random() * sim_config.course_range
@@ -45,7 +53,6 @@ class environment:
 
         self.boats = []
 
-        # todo: calculate initial wind
         self.current_wind = self.wind_prevailing
 
 
@@ -57,16 +64,34 @@ class environment:
         start2_angle = utilsmath.normalize_angle(start_angle + atan2(10.0, sim_config.course_range))
         self.start_heading = utilsmath.normalize_angle(start_angle + pi)
         self.course = []
-        self.course.append((0.98 * sim_config.course_range, start_angle, True))
-        self.course.append((0.98 * sim_config.course_range, start2_angle, False))
-
-        # todo: fill in random course spots
+        self.course.append(course_mark(0.98 * sim_config.course_range, start_angle, True))
+        self.course.append(course_mark(0.98 * sim_config.course_range, start2_angle, False))
 
         end_angle = utilsmath.normalize_angle(start_angle + pi)
         end2_angle = utilsmath.normalize_angle(end_angle + atan2(10.0, sim_config.course_range))
-        self.course.append((0.98 * sim_config.course_range, end_angle, False))
-        self.course.append((0.98 * sim_config.course_range, end2_angle, True))
+        end_starboard_mark = course_mark(0.98 * sim_config.course_range, end_angle, False)
+        end_port_mark = course_mark(0.98 * sim_config.course_range, end2_angle, True)
+        end_port_loc = [end_port_mark.dist, end_port_mark.angle]
 
+        # intermediate course markers
+        prev_mark_loc = [self.course[0].dist, self.course[0].angle]
+        angle_flip = 1
+        for count in range(sim_config.num_course_marks):
+
+            # calculate control variables based on how many marks we have left
+            remaining_marks = sim_config.num_course_marks - count
+            dist_to_end, angle_to_end = utilsmath.calculate_distance_angle(prev_mark_loc, end_port_loc)
+            dist_btwn = random.uniform(0.8, 1.5) * dist_to_end / remaining_marks
+            angle_btwn = utilsmath.normalize_angle(random.random() * angle_flip * utilsmath.rad(70) + angle_to_end)
+
+            mark_loc = utilsmath.add_vectors_polar(prev_mark_loc, [dist_btwn, angle_btwn])
+            self.course.append(course_mark(mark_loc[0], mark_loc[1], angle_flip==-1))
+
+            prev_mark_loc = mark_loc
+            angle_flip *= -1
+
+        self.course.append(end_starboard_mark)
+        self.course.append(end_port_mark)
 
     # ------------
     # create_boat:
@@ -75,8 +100,8 @@ class environment:
     #   return id (index) of boat
     #
     def create_boat(self):
-        mid_start_angle = utilsmath.normalize_angle((self.course[0][1] + self.course[1][1]) / 2)
-        start_dist = self.course[0][0]
+        mid_start_angle = utilsmath.normalize_angle((self.course[0].angle + self.course[1].angle) / 2)
+        start_dist = self.course[0].dist
         boat = true_sailboat.true_sailboat((start_dist, mid_start_angle), self.start_heading)
         self.boats.append(boat)
         if sim_config.print_boat_data:
@@ -175,13 +200,19 @@ class environment:
         self.plotter.start()
 
         # draw arrow for start direction
-        mid_start_angle = utilsmath.normalize_angle((self.course[0][1] + self.course[1][1]) / 2)
-        far_dist = self.course[0][0]
-        near_dist = self.course[0][0] - sim_config.course_range / 10.
+        mid_start_angle = utilsmath.normalize_angle((self.course[0].angle + self.course[1].angle) / 2)
+        far_dist = self.course[0].dist
+        near_dist = self.course[0].dist - sim_config.course_range / 10.
         self.plotter.arrow((mid_start_angle, far_dist), (mid_start_angle, near_dist))
 
+        count = 0
         for mark in self.course:
-            self.plotter.mark(mark[0], mark[1], mark[2])
+            plotCount = -1
+            if count not in [0, 1, len(self.course)-2, len(self.course)-1]:
+                plotCount = count - 2
+
+            self.plotter.mark(mark, plotCount)
+            count += 1
 
         for landmark in self.landmarks:
             self.plotter.landmark(landmark)
@@ -196,6 +227,8 @@ if __name__ == '__main__':
     env.measure_landmark(boat_id, env.landmarks[0])
 
     env.plotter.true_boat(env.boats[boat_id].location)
+
+    # test measurement function
     env.plotter.line(env.boats[boat_id].location, env.landmarks[0])
     measurement = env.measure_landmark(boat_id, env.landmarks[0])
     print "boat to landmark:{0}".format(utilsmath.format_location(measurement))
