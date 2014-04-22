@@ -16,3 +16,18 @@ Assumptions:
 
 Jonathan: I will flush out the rest of the initial environment.
 
+Igor: Link to the tool I used to model the speed function: http://fooplot.com/plot/jkl0n0n7el
+
+Project Video Script:
+    1. Team and project introduction (Igor, Jonathan)
+    2. Problem introduction, Hypothesis (Igor)
+    3. Environment, Course, Agents (Jonathan)
+    4. True World sailboat representation, boat velocity calculation (Igor)
+    5. Localization (Igor)
+    6. Planning - Strategic - traversing the course (Jonathan)
+    7. Planning - Tactical (sailing up-wind) (?)
+    7. Control (?)
+    8. Results (Jonathan)
+    9. Conclusion (Igor)
+
+

@@ -7,8 +7,8 @@
 # Authors: Jonathan Hudgins <jhudgins8@gatech.edu>, Igor Negovetic <igorilla@gmail.com>
 #
 
-from math import *
 import utilsmath
+
 
 class sailboat_control:
 
@@ -35,16 +35,13 @@ class sailboat_control:
 
         return boom, rudder
 
-
     def boat_measure(self):
         # todo: use landmark measurements to calculate where I am
         for landmark in self.env.landmarks:
             (radius, angle) = self.env.measure_landmark(self.boat_id, landmark)
 
-
         self.location, self.heading = self.env.boats[self.boat_id].provide_measurements()
         pass
-
 
     def localize(self):
         self.boat_measure()
@@ -54,7 +51,6 @@ class sailboat_control:
         self.relative_wind_angle = utilsmath.normalize_angle(self.heading - self.env.current_wind[1])
 
         pass
-
 
     def plan(self):
         # todo: implement planning
