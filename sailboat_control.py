@@ -9,7 +9,6 @@
 
 import utilsmath
 
-
 class sailboat_control:
 
     def __init__(self, env):
