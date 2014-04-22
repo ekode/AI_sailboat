@@ -24,10 +24,12 @@ class true_sailboat:
     #       max_speed_ratio: maximum boat speed under ideal conditions, as a proportion of current wind speed
     #       relative_wind_angle: angle of the wind relative to boat's heading
     #       speed: boat's current speed
-    #       boom_control_error: proportion of boom control error (see adjust_boom)
-    #       rudder_control_error: proportion of rudder control error (see adjust_rudder)
     #
-    def __init__(self, location, heading=pi/2.0, max_speed_ratio=0.7, boom_control_error=0.05, rudder_control_error=0.05):
+    def __init__(self, location, heading=pi/2.0, max_speed_ratio=0.7,
+                                                            boom_control_error=sim_config.boom_control_error,
+                                                            boom_measure_error=sim_config.boom_measure_error,
+                                                            rudder_control_error=sim_config.rudder_control_error,
+                                                            rudder_measure_error=sim_config.rudder_measure_error):
         self.location = location
         self.heading = heading
         self.boom = 0
@@ -35,21 +37,31 @@ class true_sailboat:
         self.max_speed_ratio = max_speed_ratio
         self.relative_wind_angle = 0
         self.speed = 0
+        self.boom_measure_error = boom_measure_error
         self.boom_control_error = boom_control_error
+        self.rudder_measure_error = rudder_measure_error
         self.rudder_control_error = rudder_control_error
         self.gate_index = 0
 
+    # ----------
+    # updateControls:
+    # update controls based on desired deltas
+    def updateControls(self, controls):
+        if controls[0] != 0:
+            self.boom = utilsmath.normalize_angle(self.boom + controls[0] + random.gauss(0, self.boom_control_error))
+
+        if controls[1] != 0:
+            self.rudder = utilsmath.normalize_angle(self.boom + controls[1] +random.gauss(0, self.rudder_control_error))
 
     # ----------
     # update:
     # update the true_sailboat location based on the environment
-    def update(self, env, controls):
+    def update(self, env):
         # Velocity vector will be added to boat's current position vector in order to calculate the new position.
-        # Magnitude of the velocity vector is boat's speed. Direction of the velocity vector is boat's heading, adjusted
-        # for the input from boat's controls.
+        # Magnitude of the velocity vector is boat's speed. Direction of the velocity vector is boat's heading,
+        # adjusted for rudder
+        self.heading = utilsmath.normalize_angle(self.heading + self.rudder/2.0)
 
-        self.boom = controls[0]
-        self.rudder = controls[1]
 
         # Boat's speed depends on the angle at which wind is blowing at the boat, wind strength, and boom angle
         # todo: implement considering boom angle
@@ -66,29 +78,19 @@ class true_sailboat:
                 # Rotate boat clockwise at the rate proportional to wind strength
                 self.heading = utilsmath.normalize_angle(self.heading - env.current_wind[0]*0.01)
         else:
-            self.adjust_heading(self.rudder)
+            self.adjust_heading()
 
         # Add velocity vector to the boat's location vector to create new location
         v1 = self.location
         v2 = (self.speed, self.heading)
         self.location = (utilsmath.add_vectors_polar(v1, v2))
-        pass
-
-    # ------------
-    # adjust_boom:
-    # adjust the boom angle (relative to current)
-    # todo: perhaps remove? Not sure why we need this. Boat agent provides new boom angle. -Igor
-    def adjust_boom(self, boom_adjustment):
-        # todo: implement
-        pass
 
     # --------------
     # adjust_heading:
     # adjust heading based on the rudder angle. Rudder angle goes from -pi/2 to pi. See plan.txt for more details.
-    def adjust_heading(self, rudder):
+    def adjust_heading(self):
         # Simplified model: Change heading half amount of the rudder angle.
-        self.heading = utilsmath.normalize_angle(self.heading + rudder/2.0)
-        pass
+        self.heading = utilsmath.normalize_angle(self.heading + self.rudder/2.0)
 
     # --------------
     # calculate_speed:

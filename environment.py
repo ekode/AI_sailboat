@@ -131,18 +131,18 @@ class environment:
             print ' '
             print 'wind', self.current_wind
 
-        for boat_id in range(len(controls)):
-            self.boats[boat_id].update(self, controls[boat_id])
-            self.plotter.true_boat(self.boats[boat_id].location)
+        for boat_id, control, boat in zip(range(len(controls)), controls, self.boats):
+            boat.updateControls(control)
+            boat.update(self)
+            self.plotter.true_boat(boat.location)
 
             if sim_config.print_boat_data:
                 print ' '
                 print 'boat', boat_id
-                print 'position', self.boats[boat_id].location
-                print 'heading', self.boats[boat_id].heading
-                print 'wind angle', self.boats[boat_id].relative_wind_angle
-                print 'speed', self.boats[boat_id].speed
-        pass
+                print 'position', boat.location
+                print 'heading', boat.heading
+                print 'wind angle', boat.relative_wind_angle
+                print 'speed', boat.speed
 
 
     # measure_landmark:
@@ -160,38 +160,22 @@ class environment:
     #   return the angle of the boom for specified sailboat_index
     #       sailboat_index: index of sail boat to measure
     def measure_boom(self, sailboat_index):
-        # todo: return boom angle for sailboat_index
-        return 0
+        measured_boom = self.boats[sailboat_index].boom + random.gauss(0, sim_config.boom_measure_error)
+        return utilsmath.normalize_angle(measured_boom)
     
     # measure_rudder:
     #   return the angle of the rudder for specified sailboat_index
     #       sailboat_index: index of sail boat to measure
     def measure_rudder(self, sailboat_index):
-        # todo: return rudder angle for sailboat_index
-        return 0
+        measured_rudder = self.boats[sailboat_index].rudder + random.gauss(0, sim_config.rudder_measure_error)
+        return utilsmath.normalize_angle(measured_rudder)
 
-    # adjust_boom:
-    #   return the angle of the boom for specified sailboat_index
-    #       sailboat_index: index of sail boat to adjust
-    #       delta_angle: angle to adjust the boom
-    def adjust_boom(self, sailboat_index, delta_angle):
-        # todo: return boom angle for sailboat_index
-        return 0
-
-    # adjust_rudder:
-    #   return the angle of the rudder for specified sailboat_index
-    #       sailboat_index: index of sail boat to adjust
-    #       delta_angle: angle to adjust the rudder
-    def adjust_rudder(self, sailboat_index, delta_angle):
-        # todo: return rudder angle for sailboat_index
-        return 0
-    
     # next_marks:
     #   return the list of remaining marks on the course the specified boat must pass (and which side)
     #       sailboat_index: index of sail boat to adjust
     #       returns: ((radius0, angle0, to_port), ...)
     def next_marks(self, sailboat_index):
-        # todo: return rudder angle for sailboat_index
+        # todo: return remaining marks
         return (10, 0, True),
 
 
