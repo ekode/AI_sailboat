@@ -20,15 +20,19 @@ def normalize_angle(angle):
 def random_angle():
     return (random.random()-0.5) * 2 * pi
 
+def ccw(angle):
+    while (angle < -2*pi):
+        angle += 2*pi
+    while angle > 0:
+        angle -= 2*pi
+    return angle
 
-# -------------------------
-# calculate_distance_angle:
-#   return the distance and angle of vector between two locations
-#
-def calculate_distance_angle(loc1, loc2):
-    distance = sqrt(loc1[0] ** 2 + loc2[0] ** 2 - 2 * loc1[0] * loc2[0] * cos(loc1[1] - loc2[1]))
-    angle = atan2(loc2[0] * sin(loc2[1]) - loc1[0] * sin(loc1[1]), loc2[0] * cos(loc2[1]) - loc1[0] * cos(loc1[1]))
-    return (distance, angle)
+def cw(angle):
+    while (angle > 2*pi):
+        angle -= 2*pi
+    while angle < 0:
+        angle += 2*pi
+    return angle
 
 
 def deg(angle):
@@ -63,6 +67,9 @@ def add_vectors_polar(v1, v2):
         a = -a
 
     return (r, a)
+
+def sub_vectors_polar(v1, v2):
+    return add_vectors_polar(v1, (-v2[0], v2[1]))
 
 
 # if utilsmath.py is run as a script, run some tests

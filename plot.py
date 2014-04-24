@@ -61,10 +61,10 @@ class plot:
             color = 'green'
             shape = '^' # triagle up
 
-        self.subplot.plot(mark.angle, mark.dist, color=color, marker=shape)
+        self.subplot.plot(mark.angle, mark.radius, color=color, marker=shape)
 
         if count != -1:
-            self.subplot.text(mark.angle, mark.dist, '{0}'.format(count), color=color)
+            self.subplot.text(mark.angle, mark.radius, '{0}'.format(count), color=color)
 
     def arrow(self, start, finish, color='black'):
         global can_plot
@@ -72,14 +72,7 @@ class plot:
             return
 
         #self.subplot.annotate("", xytext=start, xy=finish, arrowprops=dict(arrowstyle="->", facecolor='g'))
-        self.subplot.annotate("", xytext=start, xy=finish, arrowprops=dict(arrowstyle="->", color=color))
-
-    def landmark(self, location):
-        global can_plot
-        if not can_plot:
-            return
-
-        self.subplot.plot(location[1], location[0], color='white', marker='o')
+        self.subplot.annotate("", xytext=(start[1], start[0]), xy=(finish[1], finish[0]), arrowprops=dict(arrowstyle="->", color=color))
 
     def true_boat(self, location):
         global can_plot

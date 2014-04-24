@@ -41,7 +41,7 @@ class true_sailboat:
         self.boom_control_error = boom_control_error
         self.rudder_measure_error = rudder_measure_error
         self.rudder_control_error = rudder_control_error
-        self.gate_index = 0
+        self.current_mark = 2           # assume the boat has already crossed the first two marks of the start gate
 
     # ----------
     # updateControls:
@@ -61,7 +61,6 @@ class true_sailboat:
         # Magnitude of the velocity vector is boat's speed. Direction of the velocity vector is boat's heading,
         # adjusted for rudder
         self.heading = utilsmath.normalize_angle(self.heading + self.rudder/2.0)
-
 
         # Boat's speed depends on the angle at which wind is blowing at the boat, wind strength, and boom angle
         # todo: implement considering boom angle
@@ -84,6 +83,8 @@ class true_sailboat:
         v1 = self.location
         v2 = (self.speed, self.heading)
         self.location = (utilsmath.add_vectors_polar(v1, v2))
+
+        self.current_mark = env.update_mark(v1, self.location, self.current_mark)
 
     # --------------
     # adjust_heading:

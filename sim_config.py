@@ -13,6 +13,7 @@ import utilsmath
 #
 print_boat_data = True
 print_env_data = True
+plot_crossings = False
 
 
 # --------

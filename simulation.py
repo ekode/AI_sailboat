@@ -30,7 +30,7 @@ env = environment.environment()
 env.plot()
 
 # Plot arrow at the origin for the initial wind
-env.plotter.arrow((0, 0), (env.current_wind[1], env.current_wind[0]), 'blue')
+env.plotter.arrow((0, 0), env.current_wind, 'blue')
 
 boat_agents = []
 for i in range(sim_config.nr_of_boats):

@@ -35,12 +35,7 @@ class sailboat_control:
         return boom, rudder
 
     def boat_measure(self):
-        # todo: use landmark measurements to calculate where I am
-        for landmark in self.env.landmarks:
-            (radius, angle) = self.env.measure_landmark(self.boat_id, landmark)
-
         self.location, self.heading = self.env.boats[self.boat_id].provide_measurements()
-        pass
 
     def localize(self):
         self.boat_measure()
