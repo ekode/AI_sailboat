@@ -7,11 +7,17 @@
 
 import utilsmath
 
+# --------
+# Simulation
+#
+max_nr_of_steps = 10  # Maximum number of steps simulation is allowed to run
+
 
 # --------
 # Display
 #
 print_boat_data = True
+print_boat_belief = True
 print_env_data = True
 plot_crossings = False
 
@@ -20,6 +26,7 @@ plot_crossings = False
 # Boats
 #
 nr_of_boats = 1
+
 
 # --------
 # Error
@@ -32,6 +39,7 @@ boom_control_error = utilsmath.rad(5)
 rudder_measure_error = utilsmath.rad(5)
 rudder_control_error = utilsmath.rad(5)
 
+
 # --------
 # Environment
 #
@@ -39,9 +47,9 @@ rudder_control_error = utilsmath.rad(5)
 wind_prevailing = None  # Set to None for random prevailing wind. Otherwise set to tuple (speed, angle)
 wind_max = 20  # Maximum wind speed in mph
 wind_min = 5  # Minimum wind speed in mpg
-wind_variability = 0.02
-wind_distribution = (2.0, 3.14 / 4)  # Distribution (std. dev.) of wind (speed, angle)
-
+wind_speed_sigma = 2.0  # Standard deviation for wind speed
+wind_direction_sigma = 3.14 / 8.0  # Standard deviation for wind direction
+wind_change_rate = 3  # Nr of time steps. Wind change will be spread across this many time steps.
 #
 # Course
 course_range = 100

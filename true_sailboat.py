@@ -97,7 +97,7 @@ class true_sailboat:
     # calculate_speed:
     def calculate_speed(self, wind_angle, wind_strength, boom):
         # todo: add boom angle into calculation. Current calculation reflects ideal boom position. Any other boom should reduce the speed.
-        # Boat's maximum possible speed given the wind depends on the boat's heading relative to the wind direction.
+        # Boat's maximum possible speed depends on the boat's heading relative to the wind direction.
         # We assume that the boat is fastest when sailing directly down-wind (run), slower if the wind comes from the
         # sides (reach), the boat stalls and even moves backwards (while slowly turning around) if he wind is head-on.
 

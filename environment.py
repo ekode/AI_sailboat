@@ -25,6 +25,7 @@ class course_mark:
         self.to_port = to_port
         self.crossings = []
 
+
 class environment:
 
     # --------
@@ -36,17 +37,20 @@ class environment:
         self.start_heading = 0.0
         self.course = []
 
-        # set reasonable defaults based on random when None is specified
+        # Set wind variables
         if sim_config.wind_prevailing is None:
             self.wind_prevailing = (random.uniform(sim_config.wind_min, sim_config.wind_max), utilsmath.random_angle())
+        else:
+            self.wind_prevailing = sim_config.wind_prevailing
+        self.current_wind = self.wind_prevailing  # (speed, direction)
+        self.wind_speed_change = 0
+        self.wind_direction_change = 0
 
         # create a semi random course
         self.__create_random_course()
         self.__calculate_mark_crossings()
 
         self.boats = []
-
-        self.current_wind = self.wind_prevailing
 
 
     def __create_random_course(self):
@@ -135,33 +139,29 @@ class environment:
 
     # change_wind
     #   change wind speed and direction
-    def change_wind(self):
-        # todo: implement change_wind
-        # todo: update wind (1-a)*current + a*new_random (based on prevailing and distribution)
-        new_wind = self.current_wind
+    def change_wind(self, i):
+        # Set new wind speed and direction every sim_config.wind_change_rate number of steps
+        if i % sim_config.wind_change_rate == 0:
+            new_wind_speed = self.wind_prevailing[0] + random.gauss(0, sim_config.wind_speed_sigma)
+            new_wind_direction = self.wind_prevailing[1] + random.gauss(0, sim_config.wind_direction_sigma)
+            self.wind_speed_change = (new_wind_speed - self.current_wind[0]) / sim_config.wind_change_rate
+            self.wind_direction_change = (new_wind_direction - self.current_wind[1]) / sim_config.wind_change_rate
 
-        return new_wind
+        # Change the wind for the current step little bit towards the new wind speed and direction
+        new_wind = (self.current_wind[0] + self.wind_speed_change,
+                    utilsmath.normalize_angle(self.current_wind[1] + self.wind_direction_change))
+
+        self.current_wind = new_wind
+        pass
 
     # update:
     #   update the environment
     def update(self, controls):
 
-        if sim_config.print_env_data:
-            print ' '
-            print 'wind', self.current_wind
-
         for boat_id, control, boat in zip(range(len(controls)), controls, self.boats):
             boat.updateControls(control)
             boat.update(self)
             self.plotter.true_boat(boat.location)
-
-            if sim_config.print_boat_data:
-                print ' '
-                print 'boat', boat_id
-                print 'position', boat.location
-                print 'heading', boat.heading
-                print 'wind angle', boat.relative_wind_angle
-                print 'speed', boat.speed
 
     # measure_boom:
     #   return the angle of the boom for specified sailboat_index
@@ -223,6 +223,13 @@ class environment:
                     self.plotter.arrow((mark.radius, mark.angle) , crossing_end, color=color)
 
             count += 1
+
+    def is_finished(self, i):
+        # todo: implement finish line detection. Keep in mind possibility of multiple boats.
+        if i >= sim_config.max_nr_of_steps:
+            return True
+        else:
+            return False
 
     
 # if environment.py is run as a script, run some tests
