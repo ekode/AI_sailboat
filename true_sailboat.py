@@ -115,17 +115,10 @@ class true_sailboat:
     def provide_measurements(self):
 
         # Location
-        if sim_config.location_error == 0:
-            location = self.location
-        else:
-            # todo: add error to location measurement
-            location = self.location
+        location = (self.location[0] + random.gauss(0.0, sim_config.location_radius_error),
+                    utilsmath.normalize_angle(self.location[1] + random.gauss(0.0, sim_config.location_bearing_error)))
 
         # Heading
-        if sim_config.heading_error == 0:
-            heading = self.heading
-        else:
-            # todo: add error to heading measurement
-            heading = self.heading
+        heading = utilsmath.normalize_angle(self.heading + random.gauss(0.0, sim_config.heading_error))
 
         return location, heading

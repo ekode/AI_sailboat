@@ -11,10 +11,13 @@ def report(env, boat_agents, i):
     print '---step', i, '---'
 
     # Printing environment and boats data
+    if sim_config.print_wind_change:
+        print ' '
+        print 'new goal wind', env.goal_wind
+        print 'wind change', (env.wind_speed_change, env.wind_direction_change)
     if sim_config.print_env_data:
         print ' '
         print 'wind', env.current_wind
-        print 'wind change', (env.wind_speed_change, env.wind_direction_change)
     if sim_config.print_boat_data or sim_config.print_boat_belief:
         for b_id in range(sim_config.nr_of_boats):
             print ' '

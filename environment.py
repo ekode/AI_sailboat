@@ -45,6 +45,7 @@ class environment:
         self.current_wind = self.wind_prevailing  # (speed, direction)
         self.wind_speed_change = 0
         self.wind_direction_change = 0
+        self.goal_wind = (0, 0)  # new wind, used only for reporting and troubleshooting
 
         # create a semi random course
         self.__create_random_course()
@@ -144,6 +145,7 @@ class environment:
         if i % sim_config.wind_change_rate == 0:
             new_wind_speed = self.wind_prevailing[0] + random.gauss(0, sim_config.wind_speed_sigma)
             new_wind_direction = self.wind_prevailing[1] + random.gauss(0, sim_config.wind_direction_sigma)
+            self.goal_wind = (new_wind_speed, new_wind_direction)
             self.wind_speed_change = (new_wind_speed - self.current_wind[0]) / sim_config.wind_change_rate
             self.wind_direction_change = (new_wind_direction - self.current_wind[1]) / sim_config.wind_change_rate
 

@@ -52,9 +52,11 @@ while not env.is_finished(i):
         (boom_angle, rudder_angle) = boat_agents[boat_id].boat_action()
         all_boats_controls.append((boom_angle, rudder_angle))
 
+        env.plotter.boat_belief(boat_agents[boat_id].believed_location)
+
     report.report(env, boat_agents, i)
 
-    # Update Environment and change wind conditions
+    # Update Environment and change wind conditions for the next time step
     env.update(all_boats_controls)
     env.change_wind(i)
     i += 1

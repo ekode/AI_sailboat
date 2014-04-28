@@ -81,6 +81,12 @@ class plot:
 
         self.subplot.plot(location[1], location[0], color='black', marker='x')
 
+    def boat_belief(self, location):
+        global can_plot
+        if not can_plot:
+            return
+
+        self.subplot.plot(location[1], location[0], color='red', marker='x')
 
     def line(self, loc1, loc2, color='black'):
         global can_plot
