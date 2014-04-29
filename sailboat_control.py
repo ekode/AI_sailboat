@@ -10,6 +10,7 @@
 import utilsmath
 import matrix
 import sim_config
+import environment
 
 class sailboat_control:
 
@@ -19,9 +20,11 @@ class sailboat_control:
         self.believed_location = (0.0, 0.0)
         self.believed_heading = 0.0
         self.believed_velocity = (0.0, 0.0)
+        self.prev_believed_location = None
         self.measured_location = (0.0, 0.0)
         self.measured_heading = 0.0
         self.relative_wind_angle = 0.0
+        self.mark_state = environment.mark_state(2, 0)
 
     # return (boom_adjust_angle, rudder_adjust_angle)
     def boat_action(self):
@@ -50,6 +53,7 @@ class sailboat_control:
 
         # todo: implement localization
         # self.believed_location = self.measured_location
+        self.prev_believed_location = self.believed_location
         self.kalman()
 
         self.believed_heading = self.measured_heading
@@ -57,11 +61,52 @@ class sailboat_control:
 
         self.relative_wind_angle = utilsmath.normalize_angle(self.believed_heading - self.env.current_wind[1])
 
-        pass
+
+    def __update_mark_state(self):
+        if self.prev_believed_location:
+            self.env.update_mark_state(self.prev_believed_location, self.believed_location, self.mark_state)
+
+    def __way_point(self, mark, crossing):
+        # is this the first entry of a course_mark
+        if crossing[0] == 0:
+            delta = [sim_config.mark_buffer_distance, crossing[1]]
+        else:
+            delta = [crossing[0]/2.0, crossing[1]]
+        return utilsmath.add_vectors_polar([mark.radius, mark.angle], delta)
+
+    def __calculate_way_points(self):
+        self.way_points = []
+        mark_index = self.mark_state.index
+        crossing_index = self.mark_state.crossing_index
+        while mark_index < len(self.env.course):
+            # get the mark
+            mark = self.env.course[mark_index]
+
+            # skip the mark if it has no crossings
+            if len(mark.crossings) == 0:
+                mark_index += 1
+                continue
+
+            # append the way point
+            crossing = mark.crossings[crossing_index]
+            self.way_points.append(self.__way_point(mark, crossing))
+
+            # advance to next crossing (advance mark if we have visited all of this mark's crossings)
+            crossing_index += 1
+            if crossing_index >= len(mark.crossings):
+                crossing_index = 0
+                mark_index += 1
+
+    def plot_plan(self):
+        last_way_point = self.believed_location
+        for way_point in self.way_points:
+            self.env.plotter.line(last_way_point, way_point, color='magenta')
+            last_way_point = way_point
 
     def plan(self):
-        # todo: implement planning
-        pass
+        self.__update_mark_state()
+        self.__calculate_way_points()
+        # todo implement micro planning (tacking)
 
     def kalman(self):
         x = matrix.matrix([[self.believed_location[0]], [self.believed_location[1]], [self.believed_velocity[0]], [self.believed_velocity[1]]])
@@ -87,4 +132,3 @@ class sailboat_control:
 
         self.believed_location = (x.value[0][0], x.value[1][0])
         self.believed_velocity = (x.value[2][0], x.value[3][0])
-        pass

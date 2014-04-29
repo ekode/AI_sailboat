@@ -17,6 +17,13 @@ import utilsmath
 import true_sailboat
 import plot
 import sim_config
+import argparse
+
+class mark_state:
+    def __init__(self, index, crossing_index):
+        self.index = index
+        self.crossing_index = crossing_index
+
 
 class course_mark:
     def __init__(self, radius, angle, to_port):
@@ -126,7 +133,8 @@ class environment:
     def create_boat(self):
         mid_start_angle = utilsmath.normalize_angle((self.course[0].angle + self.course[1].angle) / 2)
         start_dist = self.course[0].radius
-        boat = true_sailboat.true_sailboat((start_dist, mid_start_angle), self.start_heading)
+        initial_mark_state = mark_state(2, 0)
+        boat = true_sailboat.true_sailboat((start_dist, mid_start_angle), initial_mark_state, self.start_heading)
         self.boats.append(boat)
         if sim_config.print_boat_data:
             print 'initializing boat', len(self.boats)-1, boat.location, 'heading', boat.heading
@@ -182,24 +190,33 @@ class environment:
     # update_mark:
     #   return the index of the updated mark
     #
-    # In above diagram, if current mark (cM) is a port side mark, we need to cross the line nM->cM on the
-    # port side (by the ^^^)
-    #
-    def update_mark(self, prevLoc, currentLoc, mark_index):
-        pass
+    def update_mark_state(self, prev_loc, cur_loc, mark_state):
+        if prev_loc == cur_loc:
+            return False
+
+        # test if I crossed the next crossing
+        mark = self.course[mark_state.index]
+        next_crossing = mark.crossings[mark_state.crossing_index]
+        mark_loc = [mark.radius, mark.angle]
+        prev_to_cur = utilsmath.sub_vectors_polar(cur_loc, prev_loc)
+
+        # test intersection
+        if utilsmath.intersect(prev_loc, prev_to_cur,  mark_loc, next_crossing):
+            # update mark_state
+            mark_state.crossing_index += 1
+            if mark_state.crossing_index >= len(mark.crossings):
+                mark_state.index += 1
+                mark_state.crossing_index = 0
+            return True
+
+        # to be strictly correct we should test if I crossed the prev crossing (in reverse -- I will have to recross)
+        # for now just trust that our system will be stable enough not to cross back over in a way that will
+        # miss the gate
+
+        return False
 
 
-
-    # next_marks:
-    #   return the list of remaining marks on the course the specified boat must pass (and which side)
-    #       sailboat_index: index of sail boat to adjust
-    #       returns: ((radius0, angle0, to_port), ...)
-    def next_marks(self, sailboat_index):
-        # todo: return remaining marks
-        return (10, 0, True),
-
-
-    def plot(self):
+    def plot(self, plot_crossings):
         self.plotter = plot.plot()
         self.plotter.start()
 
@@ -218,7 +235,7 @@ class environment:
             self.plotter.mark(mark, plotCount)
 
             # plot crossings
-            if sim_config.plot_crossings:
+            if plot_crossings:
                 crossColors = ['goldenrod', 'cyan']
                 for color, crossing in zip(crossColors, mark.crossings):
                     crossing_end = utilsmath.add_vectors_polar([mark.radius, mark.angle], [15, crossing[1]])
@@ -236,9 +253,12 @@ class environment:
     
 # if environment.py is run as a script, run some tests
 if __name__ == '__main__':
-    import pdb; pdb.set_trace()
+    parser = argparse.ArgumentParser(description='Graph environment test')
+    parser.add_argument('--crossings', action='store_true', help='Plot marker crossings')
+    args = parser.parse_args()
+
     env = environment()
-    env.plot()
+    env.plot(args.crossings)
 
     boat_id = env.create_boat()
 

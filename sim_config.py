@@ -59,3 +59,4 @@ wind_change_rate = 1  # Nr of time steps. Wind change will be spread across this
 course_range = 100
 num_landmarks = 5
 num_course_marks = 5
+mark_buffer_distance = 10
