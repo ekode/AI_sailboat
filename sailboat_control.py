@@ -127,47 +127,83 @@ class sailboat_control:
         best_angle = scipy.optimize.minimize_scalar(directional_speed, bounds=bounds, method='bounded')
         return utilsmath.normalize_angle(best_angle.x + desired_angle)
 
-    def __calculate_intermediates(self, last_location, to_waypoint, port_optimal_angle, starboard_optimal_angle):
+
+    def __choose_angles(self, base, angle1, angle2):
+        delta1 = abs(utilsmath.normalize_angle(base - angle1))
+        delta2 = abs(utilsmath.normalize_angle(base - angle2))
+        return (angle1, angle2) if delta1 < delta2 else (angle2, angle1)
+
+    def __is_angle_close(self, angle1, angle2, threshhold):
+        return abs(utilsmath.normalize_angle(angle1 - angle2)) < threshhold
+
+    def __calculate_intermediates(self, last_location, to_waypoint, prev_heading, next_heading):
+        # check optimal angle on port/starboard side of desired direction to next way_point
+        port_optimal_angle = self.__calculate_optimal_tack(True, to_waypoint[1])
+        starboard_optimal_angle = self.__calculate_optimal_tack(False, to_waypoint[1])
+
         # Only tack if one of the optimal angles isn't straight to waypoint
         # There might be a more optimal route if we tack on the optimal in one direction and then
         # use sub-optimal in the other direction, but for now just keep it simple.
-        if utilsmath.approx_equal(port_optimal_angle, to_waypoint[1]) or utilsmath.approx_equal(starboard_optimal_angle, to_waypoint[1]):
+        is_port_close = self.__is_angle_close(port_optimal_angle, to_waypoint[1], utilsmath.rad(1))
+        is_starboard_close = self.__is_angle_close(starboard_optimal_angle, to_waypoint[1], utilsmath.rad(1))
+        if is_port_close or is_starboard_close:
             return []
+
+        # calculate starting/last tack based on what our prev/next heading
+        # middle_tack will be the other tack
+        start_tack, middle_tack1 = self.__choose_angles(prev_heading, port_optimal_angle, starboard_optimal_angle)
+        last_tack, middle_tack2 = self.__choose_angles(next_heading, port_optimal_angle, starboard_optimal_angle)
 
         # find linear combination of v1, v2 that will equal to_waypoint
         # [v1x   v2x] [ a1 ] =  [ to_wx ]
         # [v1y   v2y] [ a2 ] =  [ to_wy ]
 
-        v1 = utilsmath.polar_to_euclidean([1.0, port_optimal_angle])
-        v2 = utilsmath.polar_to_euclidean([1.0, starboard_optimal_angle])
+        v1 = utilsmath.polar_to_euclidean([1.0, start_tack])
+        v2 = utilsmath.polar_to_euclidean([1.0, middle_tack1])
         to_w = utilsmath.polar_to_euclidean(to_waypoint)
         a = utilsmath.solve2dLinear(v1[0], v2[0], v1[1], v2[1], to_w[0], to_w[1])
 
-        # it might be helpful to do a number of tacks with these considerations:
-        #       cost of changing heading / momentum
-        #       next desired angle after way_point
-        #       spatial restrictions
-        #       wind variability
-        #
-        # But for now just tack once
-
         v0 = utilsmath.polar_to_euclidean(last_location)
-        return [utilsmath.euclidean_to_polar((a[0]*v1[0] + v0[0], a[0]*v1[1] + v0[1]))]
 
+        # if we end our turn at a different angle than we start than we just need to tack once
+        if start_tack != last_tack:
+            return [utilsmath.euclidean_to_polar((a[0]*v1[0] + v0[0], a[0]*v1[1] + v0[1]))]
+        # if we end our turn at the same angle than we need to tack twice, so that we end up with a heading
+        # closest to the next desired heading
+        else:
+            # use the midpoint of the v1 to tack, sail v2 fully, then tack back to the remainder of v1
+            point1 = (a[0]*v1[0]*0.5 + v0[0], a[0]*v1[1]*0.5 + v0[1])
+            point2 = (a[1]*v2[0] + point1[0], a[0]*v2[1] + point1[1])
+            return [utilsmath.euclidean_to_polar(point1), utilsmath.euclidean_to_polar(point2)]
+             
 
     # micro planning (tacking)
     def __calculate_tacking(self):
         last_location = self.believed_location
         self.tacking = []
-        for way_point in self.way_points:
-            # check optimal angle on port/starboard side of desired direction to next way_point
-            to_waypoint = utilsmath.sub_vectors_polar(way_point, last_location)
+        prev_heading = self.believed_velocity[1]
+        for i in range(len(self.way_points)):
+            way_point = self.way_points[i]
 
-            intermediates = self.__calculate_intermediates(last_location, to_waypoint,
-                                                            port_optimal_angle, starboard_optimal_angle)
+            to_waypoint = utilsmath.sub_vectors_polar(way_point, last_location)
+            if i+1 < len(self.way_points):
+                ignore, next_heading = utilsmath.sub_vectors_polar(self.way_points[i+1], way_point)
+                # if next_heading is close enough to the direction we are already going, skip this way_point
+                if self.__is_angle_close(to_waypoint[1], next_heading, utilsmath.rad(10)):
+                    # don't append anything to tacking list or update loop variables since we are skipping this waypoint
+                    continue
+            else:
+                next_heading = to_waypoint[1]
+
+            intermediates = self.__calculate_intermediates(last_location, to_waypoint, prev_heading, next_heading)
+            
+            # add intermediates to tacking list
             self.tacking += intermediates
             self.tacking.append(way_point)
+
+            # update loop variables
             last_location = way_point
+            prev_heading = to_waypoint[1]
 
 
     def plan(self):

@@ -43,11 +43,6 @@ def deg(angle):
 def rad(angle):
     return (angle / 180. * pi)
 
-def closest_angle(base, angle1, angle2):
-    delta1 = abs(normalize_angle(base - angle1))
-    delta1 = abs(normalize_angle(base - angle2))
-    return angle1 if delta1 < delta2 else return angle2
-
 def format_location(loc):
     return "({0}, {1:.1f}deg)".format(loc[0], deg(loc[1]))
 
@@ -86,6 +81,7 @@ def solve2dLinear(a, b, c, d, e, f):
     #
     det = a * d - b * c
     if abs(det) < 1e-10:
+        import pdb;pdb.set_trace()
         raise ValueError, "Invalid determinant"
 
     solution = ((d*e-b*f) / det, (-c*e+a*f) / det)
