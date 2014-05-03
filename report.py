@@ -26,7 +26,7 @@ def report(env, boat_agents, i):
                 print 'real position', env.boats[b_id].location
             if sim_config.print_boat_belief:
                 print 'bel. position', boat_agents[b_id].believed_location
-                print 'bel. velocity', boat_agents[b_id].believed_velocity
+                print 'bel. velocity', boat_agents[b_id].believed_velocity_cart
             if sim_config.print_boat_data:
                 print 'heading', env.boats[b_id].heading
                 print 'wind angle', env.boats[b_id].relative_wind_angle

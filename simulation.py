@@ -32,12 +32,17 @@ import sim_config
 import environment
 import sailboat_control
 import report
+import plot
 
 env = environment.environment()
-env.plot()
+polar_plot = plot.plot()
+polar_plot.start()
+polar_plot.plot_course(env, polar_plot)
+polar_plot.show()
+#env.plot()
 
 # Plot arrow at the origin for the initial wind
-env.plotter.arrow((0, 0), env.current_wind, 'blue')
+polar_plot.arrow((0, 0), env.current_wind, 'blue')
 
 boat_agents = []
 for i in range(sim_config.nr_of_boats):
@@ -52,7 +57,11 @@ while not env.is_finished(i):
         (boom_angle, rudder_angle) = boat_agents[boat_id].boat_action()
         all_boats_controls.append((boom_angle, rudder_angle))
 
-        env.plotter.boat_belief(boat_agents[boat_id].believed_location)
+        polar_plot.true_boat(env.boats[boat_id].location)
+        polar_plot.boat_belief(boat_agents[boat_id].believed_location)
+        polar_plot.boat_measured(boat_agents[boat_id].measured_location)
+        polar_plot.draw()
+        #polar_plot.show()
 
     report.report(env, boat_agents, i)
 
@@ -62,7 +71,5 @@ while not env.is_finished(i):
     i += 1
 
 report.end()
-env.plotter.show()
-
-
-
+polar_plot.end()
+polar_plot.show()

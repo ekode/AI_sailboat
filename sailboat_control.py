@@ -18,10 +18,28 @@ class sailboat_control:
         self.boat_id = self.env.create_boat()
         self.believed_location = (0.0, 0.0)
         self.believed_heading = 0.0
-        self.believed_velocity = (0.0, 0.0)
-        self.measured_location = (0.0, 0.0)
+        self.believed_velocity_cart = (0.0, 0.0)
+        self.measured_location_cart = (0.0, 0.0)
         self.measured_heading = 0.0
         self.relative_wind_angle = 0.0
+
+        # Kalman filter variables
+
+        self.kalman_u = matrix.matrix([[0.0], [0.0], [0.0], [0.0]])  # external motion
+        self.kalman_P = matrix.matrix([[0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., 1000., 0.], [0., 0., 0., 1000.]])  # initial uncertainty
+        self.kalman_F = matrix.matrix([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]])  # next state function
+        self.kalman_H = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.]])  # measurement function
+        self.kalman_R = matrix.matrix([[0.01, 0.], [0., 0.01]])  # measurement uncertainty
+        self.kalman_I = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])  # identity matrix
+
+        """
+        self.kalman_u = matrix.matrix([[0.0], [0.0]])  # external motion
+        self.kalman_P = matrix.matrix([[1000., 0.], [0., 1000.]])  # initial uncertainty
+        self.kalman_F = matrix.matrix([[1, 1], [0, 1]])  # next state function
+        self.kalman_H = matrix.matrix([[1., 0.]])  # measurement function
+        self.kalman_R = matrix.matrix([[0.01]])  # measurement uncertainty
+        self.kalman_I = matrix.matrix([[1., 0.], [0., 1.]])  # identity matrix
+        """
 
     # return (boom_adjust_angle, rudder_adjust_angle)
     def boat_action(self):
@@ -35,6 +53,7 @@ class sailboat_control:
         else:
             rudder = -0.2
 
+        rudder = 0.0
         boom = 0.0
 
         return boom, rudder
@@ -57,34 +76,38 @@ class sailboat_control:
 
         self.relative_wind_angle = utilsmath.normalize_angle(self.believed_heading - self.env.current_wind[1])
 
-        pass
 
     def plan(self):
         # todo: implement planning
         pass
 
     def kalman(self):
-        x = matrix.matrix([[self.believed_location[0]], [self.believed_location[1]], [self.believed_velocity[0]], [self.believed_velocity[1]]])
-        u = matrix.matrix([[0.0], [0.0], [0.0], [0.0]])  # external motion
 
-        P = matrix.matrix([[0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., 1000., 0.], [0., 0., 0., 1000.]])  # initial uncertainty
-        F = matrix.matrix([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]])  # next state function
-        H = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.]])  # measurement function
-        R = matrix.matrix([[0.1, 0.], [0., 0.1]])  # measurement uncertainty
-        I = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])  # identity matrix
+        # Convert polar coordinates to cartesian
+        c = utilsmath.polar_to_cartesian(self.believed_location)
+        m = utilsmath.polar_to_cartesian(self.measured_location)
+
+        x = matrix.matrix([[c[0]], [c[1]], [self.believed_velocity_cart[0]], [self.believed_velocity_cart[1]]])
+        ### x = matrix.matrix([[self.believed_location[0]], [self.believed_location[1]], [self.believed_velocity[0]], [self.believed_velocity[1]]])
+        ### x = matrix.matrix([[self.believed_location[0]], [self.believed_velocity[0]]])
 
         # prediction
-        x = (F * x) + u
-        P = F * P * F.transpose()
+        x = (self.kalman_F * x) + self.kalman_u
+        self.kalman_P = self.kalman_F * self.kalman_P * self.kalman_F.transpose()
 
         # measurement update
-        Z = matrix.matrix([[self.measured_location[0]], [self.measured_location[1]]])
-        y = Z - (H * x)
-        S = H * P * H.transpose() + R
-        K = P * H.transpose() * S.inverse()
+        Z = matrix.matrix([[m[0]], [m[1]]])
+        ### Z = matrix.matrix([[self.measured_location[0]], [self.measured_location[1]]])
+        ### Z = matrix.matrix([[self.measured_location[0]]])
+        y = Z - (self.kalman_H * x)
+        S = self.kalman_H * self.kalman_P * self.kalman_H.transpose() + self.kalman_R
+        K = self.kalman_P * self.kalman_H.transpose() * S.inverse()
         x = x + (K * y)
-        P = (I - (K * H)) * P  # prediction
+        self.kalman_P = (self.kalman_I - (K * self.kalman_H)) * self.kalman_P  # prediction
 
-        self.believed_location = (x.value[0][0], x.value[1][0])
-        self.believed_velocity = (x.value[2][0], x.value[3][0])
-        pass
+        self.believed_location = (utilsmath.cartesian_to_polar((x.value[0][0], x.value[1][0])))
+        self.believed_velocity_cart = (x.value[2][0], x.value[3][0])
+        ### self.believed_location = (x.value[0][0], utilsmath.normalize_angle(x.value[1][0]))
+        ### self.believed_velocity = (x.value[2][0], utilsmath.normalize_angle(x.value[3][0]))
+        ### self.believed_location = (x.value[0][0], self.measured_location[1])
+        ### self.believed_velocity = (x.value[1][0], 0.)

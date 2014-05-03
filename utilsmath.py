@@ -71,6 +71,12 @@ def add_vectors_polar(v1, v2):
 def sub_vectors_polar(v1, v2):
     return add_vectors_polar(v1, (-v2[0], v2[1]))
 
+def polar_to_cartesian(p):
+    return p[0]*cos(p[1]), p[0]*sin(p[1])
+
+def cartesian_to_polar(c):
+    return hypot(c[0], c[1]), atan2(c[1], c[0])
+
 
 # if utilsmath.py is run as a script, run some tests
 if __name__== '__main__':
