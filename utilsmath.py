@@ -43,6 +43,10 @@ def deg(angle):
 def rad(angle):
     return (angle / 180. * pi)
 
+def closest_angle(base, angle1, angle2):
+    delta1 = abs(normalize_angle(base - angle1))
+    delta1 = abs(normalize_angle(base - angle2))
+    return angle1 if delta1 < delta2 else return angle2
 
 def format_location(loc):
     return "({0}, {1:.1f}deg)".format(loc[0], deg(loc[1]))
@@ -59,21 +63,33 @@ def add_vectors_polar(v1, v2):
     rx = v1x + v2x
     ry = v1y + v2y
 
-    r = sqrt(rx**2 + ry**2)
-    if r == 0:
-        a = 0
-    else:
-        a = acos(rx/r)
-        if ry < 0:
-            a = -a
-
-    return (r, a)
+    return euclidean_to_polar((rx, ry))
 
 def sub_vectors_polar(v1, v2):
     return add_vectors_polar(v1, (-v2[0], v2[1]))
 
+def euclidean_to_polar(v):
+    return (sqrt(v[0]**2 + v[1]**2), atan2(v[1], v[0]))
+
 def polar_to_euclidean(v):
     return (v[0]*cos(v[1]), v[0]*sin(v[1]))
+
+def solve2dLinear(a, b, c, d, e, f):
+    # [a  b]  [x]  =  [e]
+    # [c  d]  [y]  =  [f]
+    #
+    # Note: I tried the matrix library inverse, but it gave me: "Matrix not positive-definite" for some values
+    # So I just use the simple inverse formula for 2x2
+    #        -1
+    # [ a b ]    = 1/det * [ d  -b ]
+    # [ c d ]              [ -c  a ]
+    #
+    det = a * d - b * c
+    if abs(det) < 1e-10:
+        raise ValueError, "Invalid determinant"
+
+    solution = ((d*e-b*f) / det, (-c*e+a*f) / det)
+    return solution
 
 
 # determine intesection   of line starting at l1 in direction and length of v1
@@ -111,34 +127,19 @@ def intersect(l1in, v1in, l2in, v2in):
 
     # s1 = l1 + a1 * v1   for 0 <= a1 <= 1
     # s2 = l2 + a2 * v2   for 0 <= a2 <= 1
+    #
     # solve for  a1 and a2
+    #
     # [v1x   -v2x] [a1] = [l2x - l1x]
     # [v1y   -v2y] [a2] = [l2y - l1y]
-    #
-    #      M   *     a  =   l
-    #
-    # Note: I tried the matrix library inverse, but it gave me: "Matrix not positive-definite"
-    # So I just use the simple inverse formula for 2x2
-    #        -1
-    # [ a b ]    = 1/det * [ d  -c ]
-    # [ c d ]              [ -b  a ]
-    #
 
-    det = v1[0] * (-v2[1]) + v1[0] * v2[0]
-    if abs(det) < 1e-10:
-        raise ValueError, "Invalid determinant"
+    a = solve2dLinear(v1[0], -v2[0], v1[1], -v2[1], l2[0] - l1[0], l2[1] - l1[1])
 
-    Minverse = matrix.matrix([[-v2[1]/det, -v1[1]/det],
-                              [ v2[0]/det,  v1[0]/det]])
-    l = matrix.matrix( [[l2[0] - l1[0]],
-                        [l2[1] - l1[1]]])
-    a = Minverse * l
-
-    if a.value[0][0] < 0 or a.value[1][0] < 0:
+    if a[0] < 0 or a[1] < 0:
         return False
-    if not isV1Ray and a.value[0][0] > 1:
+    if not isV1Ray and a[0] > 1:
         return False
-    if not isV2Ray and a.value[1][0] > 1:
+    if not isV2Ray and a[1] > 1:
         return False
 
     return True

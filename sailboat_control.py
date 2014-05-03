@@ -11,6 +11,10 @@ import utilsmath
 import matrix
 import sim_config
 import environment
+import scipy.optimize
+from math import *
+import random
+random.seed(123)
 
 class sailboat_control:
 
@@ -103,10 +107,74 @@ class sailboat_control:
             self.env.plotter.line(last_way_point, way_point, color='magenta')
             last_way_point = way_point
 
+        last_tack = self.believed_location
+        for tack in self.tacking:
+            self.env.plotter.line(last_tack, tack, color='blue')
+            last_tack = tack
+
+
+    def __calculate_optimal_tack(self, to_port, desired_angle):
+
+        wind_angle = self.env.current_wind[1]
+        def directional_speed(delta_angle):
+            true_angle = delta_angle + desired_angle
+            stall_ratio = 0.05
+            speed_ratio = (1.0 + stall_ratio) * e**(-(abs(true_angle - wind_angle)**2)/2) - stall_ratio
+            directional_speed = cos(delta_angle) * speed_ratio
+            return -directional_speed
+
+        bounds = (0.0, pi/2.0) if to_port else (-pi/2.0, 0.0)
+        best_angle = scipy.optimize.minimize_scalar(directional_speed, bounds=bounds, method='bounded')
+        return utilsmath.normalize_angle(best_angle.x + desired_angle)
+
+    def __calculate_intermediates(self, last_location, to_waypoint, port_optimal_angle, starboard_optimal_angle):
+        # Only tack if one of the optimal angles isn't straight to waypoint
+        # There might be a more optimal route if we tack on the optimal in one direction and then
+        # use sub-optimal in the other direction, but for now just keep it simple.
+        if utilsmath.approx_equal(port_optimal_angle, to_waypoint[1]) or utilsmath.approx_equal(starboard_optimal_angle, to_waypoint[1]):
+            return []
+
+        # find linear combination of v1, v2 that will equal to_waypoint
+        # [v1x   v2x] [ a1 ] =  [ to_wx ]
+        # [v1y   v2y] [ a2 ] =  [ to_wy ]
+
+        v1 = utilsmath.polar_to_euclidean([1.0, port_optimal_angle])
+        v2 = utilsmath.polar_to_euclidean([1.0, starboard_optimal_angle])
+        to_w = utilsmath.polar_to_euclidean(to_waypoint)
+        a = utilsmath.solve2dLinear(v1[0], v2[0], v1[1], v2[1], to_w[0], to_w[1])
+
+        # it might be helpful to do a number of tacks with these considerations:
+        #       cost of changing heading / momentum
+        #       next desired angle after way_point
+        #       spatial restrictions
+        #       wind variability
+        #
+        # But for now just tack once
+
+        v0 = utilsmath.polar_to_euclidean(last_location)
+        return [utilsmath.euclidean_to_polar((a[0]*v1[0] + v0[0], a[0]*v1[1] + v0[1]))]
+
+
+    # micro planning (tacking)
+    def __calculate_tacking(self):
+        last_location = self.believed_location
+        self.tacking = []
+        for way_point in self.way_points:
+            # check optimal angle on port/starboard side of desired direction to next way_point
+            to_waypoint = utilsmath.sub_vectors_polar(way_point, last_location)
+
+            intermediates = self.__calculate_intermediates(last_location, to_waypoint,
+                                                            port_optimal_angle, starboard_optimal_angle)
+            self.tacking += intermediates
+            self.tacking.append(way_point)
+            last_location = way_point
+
+
     def plan(self):
         self.__update_mark_state()
         self.__calculate_way_points()
-        # todo implement micro planning (tacking)
+        self.__calculate_tacking()
+
 
     def kalman(self):
         x = matrix.matrix([[self.believed_location[0]], [self.believed_location[1]], [self.believed_velocity[0]], [self.believed_velocity[1]]])

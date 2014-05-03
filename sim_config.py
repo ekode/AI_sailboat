@@ -5,6 +5,7 @@
 #
 
 
+from math import *
 import utilsmath
 
 # --------
@@ -48,7 +49,7 @@ rudder_control_error = utilsmath.rad(5)
 # Environment
 #
 # Wind
-wind_prevailing = (15, 0)  # Set to None for random prevailing wind. Otherwise set to tuple (speed, direction).
+wind_prevailing = (15, utilsmath.rad(64. - 180.))  # Set to None for random prevailing wind. Otherwise set to tuple (speed, direction).
 wind_max = 20  # Maximum wind speed in mph for randomly chosen prevailing wind.
 wind_min = 5  # Minimum wind speed in mpg for randomly chosen prevailing wind.
 wind_speed_sigma = 1.0  # Standard deviation for wind speed.
