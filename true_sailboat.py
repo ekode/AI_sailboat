@@ -25,7 +25,7 @@ class true_sailboat:
     #       relative_wind_angle: angle of the wind relative to boat's heading
     #       speed: boat's current speed
     #
-    def __init__(self, location, heading=pi/2.0, max_speed_ratio=0.7,
+    def __init__(self, location, initial_mark_state, heading=pi/2.0, max_speed_ratio=0.7,
                                                             boom_control_error=sim_config.boom_control_error,
                                                             boom_measure_error=sim_config.boom_measure_error,
                                                             rudder_control_error=sim_config.rudder_control_error,
@@ -41,7 +41,7 @@ class true_sailboat:
         self.boom_control_error = boom_control_error
         self.rudder_measure_error = rudder_measure_error
         self.rudder_control_error = rudder_control_error
-        self.current_mark = 2           # assume the boat has already crossed the first two marks of the start gate
+        self.mark_state = initial_mark_state
 
     # ----------
     # updateControls:
@@ -84,7 +84,9 @@ class true_sailboat:
         v2 = (self.speed, self.heading)
         self.location = (utilsmath.add_vectors_polar(v1, v2))
 
-        self.current_mark = env.update_mark(v1, self.location, self.current_mark)
+        # We probably don't really need to keep track of the "true" mark state.
+        # The simulated version will probably be enough
+        # env.update_mark_state(v1, self.location, self.mark_state)
 
     # --------------
     # adjust_heading:
