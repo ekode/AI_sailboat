@@ -100,7 +100,7 @@ class plot:
         self.subplot.plot(mark.angle, mark.radius, color=color, marker=shape)
 
         if count != -1:
-            self.subplot.text(mark.angle, mark.radius, '{0}'.format(count), color=color)
+            self.subplot.text(mark.angle, mark.radius+2., '{0}'.format(count), color=color)
 
     def arrow(self, start, finish, color='black'):
         global can_plot

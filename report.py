@@ -24,21 +24,19 @@ def report(env, boat_agents, i):
             print 'boat', b_id
             if sim_config.print_boat_data:
                 print 'real position', env.boats[b_id].location
-            if sim_config.print_boat_belief:
-                print 'bel. position', boat_agents[b_id].believed_location
-                print 'bel. velocity', boat_agents[b_id].believed_velocity_cart
-            if sim_config.print_boat_data:
-                print 'heading', env.boats[b_id].heading
+                print 'real speed', env.boats[b_id].speed
+                print 'real heading', env.boats[b_id].heading
                 print 'wind angle', env.boats[b_id].relative_wind_angle
-                print 'speed', env.boats[b_id].speed
-    pass
+            if sim_config.print_boat_belief:
+                print ' '
+                print 'bel. position', boat_agents[b_id].believed_location
+                print 'bel. speed', boat_agents[b_id].believed_speed
+                print 'bel. heading', boat_agents[b_id].believed_heading
 
 
 def start():
     print ' '
     print 'Starting simulation'
-
-    pass
 
 
 def end():

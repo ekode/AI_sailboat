@@ -29,3 +29,7 @@ Project Video Script:
     7. Control (?)
     8. Results (Jonathan)
     9. Conclusion (Igor)
+
+
+Things that are missing, but which we can mention in the video, for future development:
+- Accounting for boat's momentum.

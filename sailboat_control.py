@@ -21,37 +21,29 @@ class sailboat_control:
     def __init__(self, env):
         self.env = env
         self.boat_id = self.env.create_boat()
-        self.believed_location = (0.0, 0.0)
+
+        #self.believed_location = self.env.boats[self.boat_id].location  # Initial believed location
+        self.believed_location = 0.0, 0.0
         self.believed_heading = 0.0
+        self.believed_speed = 0.0
 
-        self.believed_velocity_cart = (0.0, 0.0)
-        self.measured_location_cart = (0.0, 0.0)
-
-        self.believed_velocity = (0.0, 0.0)
         self.prev_believed_location = None
-        self.measured_location = (0.0, 0.0)
 
+        self.measured_location = (0.0, 0.0)
         self.measured_heading = 0.0
+        self.measured_speed = 0.0
+
         self.relative_wind_angle = 0.0
         self.mark_state = environment.mark_state(2, 0)
 
         # Kalman filter variables
-
         self.kalman_u = matrix.matrix([[0.0], [0.0], [0.0], [0.0]])  # external motion
-        self.kalman_P = matrix.matrix([[0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., 1000., 0.], [0., 0., 0., 1000.]])  # initial uncertainty
+        self.kalman_P = matrix.matrix([[0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., 0.1, 0.], [0., 0., 0., 10.]])  # initial uncertainty
         self.kalman_F = matrix.matrix([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]])  # next state function
         self.kalman_H = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.]])  # measurement function
         self.kalman_R = matrix.matrix([[0.01, 0.], [0., 0.01]])  # measurement uncertainty
         self.kalman_I = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])  # identity matrix
 
-        """
-        self.kalman_u = matrix.matrix([[0.0], [0.0]])  # external motion
-        self.kalman_P = matrix.matrix([[1000., 0.], [0., 1000.]])  # initial uncertainty
-        self.kalman_F = matrix.matrix([[1, 1], [0, 1]])  # next state function
-        self.kalman_H = matrix.matrix([[1., 0.]])  # measurement function
-        self.kalman_R = matrix.matrix([[0.01]])  # measurement uncertainty
-        self.kalman_I = matrix.matrix([[1., 0.], [0., 1.]])  # identity matrix
-        """
 
     # return (boom_adjust_angle, rudder_adjust_angle)
     def boat_action(self):
@@ -65,29 +57,25 @@ class sailboat_control:
         else:
             rudder = -0.2
 
-        rudder = 0.0
         boom = 0.0
 
         return boom, rudder
 
-    def boat_measure(self):
-        self.measured_location, self.measured_heading = self.env.boats[self.boat_id].provide_measurements()
-
-        if self.believed_location == (0.0, 0.0):
-            self.believed_location = self.measured_location  # initial believed location
 
     def localize(self):
-        self.boat_measure()
-
-        # todo: implement localization
-        # self.believed_location = self.measured_location
-        self.prev_believed_location = self.believed_location
-        self.kalman()
-
+        self.measured_location, self.measured_heading, self.measured_speed = self.env.boats[self.boat_id].provide_measurements()
         self.believed_heading = self.measured_heading
+        self.believed_speed = self.measured_speed
 
+        if self.believed_location == (0.0, 0.0):
+            # Initial location - do not run Kalman
+            self.believed_location = self.env.boats[self.boat_id].location
+        else:
+            self.prev_believed_location = self.believed_location
+            self.kalman()
 
         self.relative_wind_angle = utilsmath.normalize_angle(self.believed_heading - self.env.current_wind[1])
+
 
     def __update_mark_state(self):
         if self.prev_believed_location:
@@ -206,7 +194,7 @@ class sailboat_control:
     def __calculate_tacking(self):
         last_location = self.believed_location
         self.tacking = []
-        prev_heading = self.believed_velocity[1]
+        prev_heading = self.believed_heading
         for i in range(len(self.way_points)):
             way_point = self.way_points[i]
 
@@ -241,11 +229,10 @@ class sailboat_control:
 
         # Convert polar coordinates to cartesian
         c = utilsmath.polar_to_cartesian(self.believed_location)
+        v = utilsmath.polar_to_cartesian((self.believed_speed, self.believed_heading))
         m = utilsmath.polar_to_cartesian(self.measured_location)
 
-        x = matrix.matrix([[c[0]], [c[1]], [self.believed_velocity_cart[0]], [self.believed_velocity_cart[1]]])
-        ### x = matrix.matrix([[self.believed_location[0]], [self.believed_location[1]], [self.believed_velocity[0]], [self.believed_velocity[1]]])
-        ### x = matrix.matrix([[self.believed_location[0]], [self.believed_velocity[0]]])
+        x = matrix.matrix([[c[0]], [c[1]], [v[0]], [v[1]]])
 
         # prediction
         x = (self.kalman_F * x) + self.kalman_u
@@ -253,8 +240,6 @@ class sailboat_control:
 
         # measurement update
         Z = matrix.matrix([[m[0]], [m[1]]])
-        ### Z = matrix.matrix([[self.measured_location[0]], [self.measured_location[1]]])
-        ### Z = matrix.matrix([[self.measured_location[0]]])
         y = Z - (self.kalman_H * x)
         S = self.kalman_H * self.kalman_P * self.kalman_H.transpose() + self.kalman_R
         K = self.kalman_P * self.kalman_H.transpose() * S.inverse()
@@ -262,9 +247,5 @@ class sailboat_control:
         self.kalman_P = (self.kalman_I - (K * self.kalman_H)) * self.kalman_P  # prediction
 
         self.believed_location = (utilsmath.cartesian_to_polar((x.value[0][0], x.value[1][0])))
-        self.believed_velocity_cart = (x.value[2][0], x.value[3][0])
-        ### self.believed_location = (x.value[0][0], utilsmath.normalize_angle(x.value[1][0]))
-        ### self.believed_velocity = (x.value[2][0], utilsmath.normalize_angle(x.value[3][0]))
-        ### self.believed_location = (x.value[0][0], self.measured_location[1])
-        ### self.believed_velocity = (x.value[1][0], 0.)
+        self.believed_speed, self.believed_heading = utilsmath.cartesian_to_polar((x.value[2][0], x.value[3][0]))
 
