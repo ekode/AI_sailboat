@@ -58,7 +58,7 @@ class environment:
         self.__create_random_course()
         self.__calculate_mark_crossings()
 
-        self.boats = []
+        self.boats = []  # True boats
 
 
     def __create_random_course(self):
@@ -169,9 +169,9 @@ class environment:
     def update(self, controls):
 
         for boat_id, control, boat in zip(range(len(controls)), controls, self.boats):
+            #self.plotter.true_boat(boat.location)
             boat.updateControls(control)
             boat.update(self)
-            self.plotter.true_boat(boat.location)
 
     # measure_boom:
     #   return the angle of the boom for specified sailboat_index

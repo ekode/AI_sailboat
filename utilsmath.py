@@ -52,22 +52,25 @@ def approx_equal(v1, v2):
 
 
 def add_vectors_polar(v1, v2):
-    v1x, v1y = polar_to_euclidean(v1)
-    v2x, v2y = polar_to_euclidean(v2)
+    v1x, v1y = polar_to_cartesian(v1)
+    v2x, v2y = polar_to_cartesian(v2)
 
     rx = v1x + v2x
     ry = v1y + v2y
 
-    return euclidean_to_polar((rx, ry))
+    return cartesian_to_polar((rx, ry))
 
 def sub_vectors_polar(v1, v2):
     return add_vectors_polar(v1, (-v2[0], v2[1]))
 
-def euclidean_to_polar(v):
-    return (sqrt(v[0]**2 + v[1]**2), atan2(v[1], v[0]))
 
-def polar_to_euclidean(v):
-    return (v[0]*cos(v[1]), v[0]*sin(v[1]))
+def polar_to_cartesian(p):
+    return p[0]*cos(p[1]), p[0]*sin(p[1])
+
+
+def cartesian_to_polar(c):
+    return hypot(c[0], c[1]), atan2(c[1], c[0])
+
 
 def solve2dLinear(a, b, c, d, e, f):
     # [a  b]  [x]  =  [e]
@@ -115,10 +118,10 @@ def intersect(l1in, v1in, l2in, v2in):
     if isV2Ray:
         v2[0] = 1
 
-    l1 = polar_to_euclidean(l1)
-    v1 = polar_to_euclidean(v1)
-    l2 = polar_to_euclidean(l2)
-    v2 = polar_to_euclidean(v2)
+    l1 = polar_to_cartesian(l1)
+    v1 = polar_to_cartesian(v1)
+    l2 = polar_to_cartesian(l2)
+    v2 = polar_to_cartesian(v2)
 
 
     # s1 = l1 + a1 * v1   for 0 <= a1 <= 1
@@ -139,6 +142,8 @@ def intersect(l1in, v1in, l2in, v2in):
         return False
 
     return True
+
+
 
 # if utilsmath.py is run as a script, run some tests
 if __name__== '__main__':

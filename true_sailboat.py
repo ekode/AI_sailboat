@@ -114,14 +114,16 @@ class true_sailboat:
     def provide_measurements(self):
 
         # Location
-        location = (self.location[0] + random.gauss(0.0, sim_config.location_radius_error),
+        location = (self.location[0] * random.gauss(1.0, sim_config.location_radius_error),
                     utilsmath.normalize_angle(self.location[1] + random.gauss(0.0, sim_config.location_bearing_error)))
 
         # Heading
         heading = utilsmath.normalize_angle(self.heading + random.gauss(0.0, sim_config.heading_error))
 
-        return location, heading
+        # Speed
+        speed = self.speed * random.gauss(1.0, sim_config.speed_error)
+
+        return location, heading, speed
 
     def measure_rudder(self):
         return utilsmath.normalize_angle(self.rudder + random.gauss(0.0, sim_config.rudder_measure_error))
-

@@ -11,6 +11,8 @@
 # standard libs
 from math import *
 import random
+import sim_config
+import utilsmath
 
 
 can_plot = False
@@ -38,8 +40,12 @@ class plot:
         if not can_plot:
             return
 
-        self.fig = plt.figure()
-        self.subplot = self.fig.add_subplot(111, polar=True)
+        self.fig = plt.figure(figsize=(15, 15))
+        self.subplot = self.fig.add_subplot(111, polar=True, navigate=True)
+        plt.ion()  # enable interactive plotting
+
+    def end(self):
+        plt.ioff()
 
     def show(self):
         global can_plot
@@ -47,6 +53,36 @@ class plot:
             return
 
         plt.show()
+        #self.fig.show(block=True)
+
+    def draw(self):
+        plt.draw()
+        #self.fig.draw()
+
+    def plot_course(self, env, polar_plot):
+
+        # draw arrow for start direction
+        mid_start_angle = utilsmath.normalize_angle((env.course[0].angle + env.course[1].angle) / 2)
+        far_dist = env.course[0].radius
+        near_dist = env.course[0].radius - sim_config.course_range / 10.
+        polar_plot.arrow((far_dist, mid_start_angle), (near_dist, mid_start_angle))
+
+        count = 0
+        for mark in env.course:
+            plotCount = -1
+            if count not in [0, 1, len(env.course), len(env.course)-1]:
+                plotCount = count - 2
+
+            polar_plot.mark(mark, plotCount)
+
+            # plot crossings
+            if sim_config.plot_crossings:
+                crossColors = ['goldenrod', 'cyan']
+                for color, crossing in zip(crossColors, mark.crossings):
+                    crossing_end = utilsmath.add_vectors_polar([mark.radius, mark.angle], [15, crossing[1]])
+                    polar_plot.arrow((mark.radius, mark.angle), crossing_end, color=color)
+
+            count += 1
 
     def mark(self, mark, count):
         global can_plot
@@ -64,7 +100,7 @@ class plot:
         self.subplot.plot(mark.angle, mark.radius, color=color, marker=shape)
 
         if count != -1:
-            self.subplot.text(mark.angle, mark.radius, '{0}'.format(count), color=color)
+            self.subplot.text(mark.angle, mark.radius+2., '{0}'.format(count), color=color)
 
     def arrow(self, start, finish, color='black'):
         global can_plot
@@ -87,6 +123,13 @@ class plot:
             return
 
         self.subplot.plot(location[1], location[0], color='red', marker='x')
+
+    def boat_measured(self, location):
+        global can_plot
+        if not can_plot:
+            return
+
+        self.subplot.plot(location[1], location[0], color='green', marker='x')
 
     def line(self, loc1, loc2, color='black'):
         global can_plot

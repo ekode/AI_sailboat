@@ -29,3 +29,13 @@ Project Video Script:
     7. Control (?)
     8. Results (Jonathan)
     9. Conclusion (Igor)
+
+
+Things that are missing, but which we can mention in the video, for future development:
+- Accounting for boat's momentum.
+- Testing against other simulation models (the controls should work
+  reasonably well with a wide variety of simulations)
+- Optimize tacking angles as multivariate optimization problem (optimal
+  solution may not be the same as the 2 independently optimal angles)
+- Account for and adjust boom
+

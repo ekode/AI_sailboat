@@ -21,18 +21,33 @@ class sailboat_control:
     def __init__(self, env):
         self.env = env
         self.boat_id = self.env.create_boat()
-        self.believed_location = (0.0, 0.0)
+
+        #self.believed_location = self.env.boats[self.boat_id].location  # Initial believed location
+        self.believed_location = 0.0, 0.0
         self.believed_heading = 0.0
-        self.believed_velocity = (0.0, 0.0)
+        self.believed_speed = 0.0
+
         self.prev_believed_location = None
+
         self.measured_location = (0.0, 0.0)
         self.measured_heading = 0.0
         self.measured_rudder = 0.0
+        self.measured_speed = 0.0
+
         self.relative_wind_angle = 0.0
         self.mark_state = environment.mark_state(2, 0)
         self.replan = True
         self.last_cross_track_error = 0.0
         self.int_cross_track_error = 0.0
+
+        # Kalman filter variables
+        self.kalman_u = matrix.matrix([[0.0], [0.0], [0.0], [0.0]])  # external motion
+        self.kalman_P = matrix.matrix([[0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., 0.1, 0.], [0., 0., 0., 10.]])  # initial uncertainty
+        self.kalman_F = matrix.matrix([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]])  # next state function
+        self.kalman_H = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.]])  # measurement function
+        self.kalman_R = matrix.matrix([[0.01, 0.], [0., 0.01]])  # measurement uncertainty
+        self.kalman_I = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])  # identity matrix
+
 
     # return (boom_adjust_angle, rudder_adjust_angle)
     def boat_action(self):
@@ -65,24 +80,20 @@ class sailboat_control:
 
         return boom, rudder_delta
 
-    def boat_measure(self):
-        self.measured_location, self.measured_heading = self.env.boats[self.boat_id].provide_measurements()
-
-        if self.believed_location == (0.0, 0.0):
-            self.believed_location = self.measured_location  # initial believed location
 
         self.measured_rudder = self.env.boats[self.boat_id].measure_rudder()
 
     def localize(self):
-        self.boat_measure()
-
-        # todo: implement localization
-        # self.believed_location = self.measured_location
-        self.prev_believed_location = self.believed_location
-        self.kalman()
-
+        self.measured_location, self.measured_heading, self.measured_speed = self.env.boats[self.boat_id].provide_measurements()
         self.believed_heading = self.measured_heading
+        self.believed_speed = self.measured_speed
 
+        if self.believed_location == (0.0, 0.0):
+            # Initial location - do not run Kalman
+            self.believed_location = self.env.boats[self.boat_id].location
+        else:
+            self.prev_believed_location = self.believed_location
+            self.kalman()
 
         self.relative_wind_angle = utilsmath.normalize_angle(self.believed_heading - self.env.current_wind[1])
 
@@ -92,9 +103,9 @@ class sailboat_control:
         if self.tacking_index + 1 >= len(self.tacking):
             return 0.0, 0.0
 
-        tack_start = utilsmath.polar_to_euclidean(self.tacking[self.tacking_index])
-        tack_end = utilsmath.polar_to_euclidean(self.tacking[self.tacking_index + 1])
-        xy_location = utilsmath.polar_to_euclidean(self.believed_location)
+        tack_start = utilsmath.polar_to_cartesian(self.tacking[self.tacking_index])
+        tack_end = utilsmath.polar_to_cartesian(self.tacking[self.tacking_index + 1])
+        xy_location = utilsmath.polar_to_cartesian(self.believed_location)
 
         segment_vec = [tack_end[0]-tack_start[0], tack_end[1]-tack_start[1]]
         segment_len = sqrt(segment_vec[0] ** 2 + segment_vec[1] ** 2)
@@ -159,15 +170,17 @@ class sailboat_control:
                 crossing_index = 0
                 mark_index += 1
 
-    def plot_plan(self):
+    def plot_plan(self, plotter):
         last_way_point = self.believed_location
         for way_point in self.way_points:
-            self.env.plotter.line(last_way_point, way_point, color='magenta')
+            #self.env.plotter.line(last_way_point, way_point, color='magenta')
+            plotter.line(last_way_point, way_point, color='magenta')
             last_way_point = way_point
 
         last_tack = self.believed_location
         for tack in self.tacking:
-            self.env.plotter.line(last_tack, tack, color='blue')
+            #self.env.plotter.line(last_tack, tack, color='blue')
+            plotter.line(last_tack, tack, color='blue')
             last_tack = tack
 
 
@@ -225,30 +238,30 @@ class sailboat_control:
         # [v1x   v2x] [ a1 ] =  [ to_wx ]
         # [v1y   v2y] [ a2 ] =  [ to_wy ]
 
-        v1 = utilsmath.polar_to_euclidean([1.0, start_tack])
-        v2 = utilsmath.polar_to_euclidean([1.0, middle_tack1])
-        to_w = utilsmath.polar_to_euclidean(to_waypoint)
+        v1 = utilsmath.polar_to_cartesian([1.0, start_tack])
+        v2 = utilsmath.polar_to_cartesian([1.0, middle_tack1])
+        to_w = utilsmath.polar_to_cartesian(to_waypoint)
         a = utilsmath.solve2dLinear(v1[0], v2[0], v1[1], v2[1], to_w[0], to_w[1])
 
-        v0 = utilsmath.polar_to_euclidean(last_location)
+        v0 = utilsmath.polar_to_cartesian(last_location)
 
         # if we end our turn at a different angle than we start than we just need to tack once
         if start_tack != last_tack:
-            return [utilsmath.euclidean_to_polar((a[0]*v1[0] + v0[0], a[0]*v1[1] + v0[1]))]
+            return [utilsmath.cartesian_to_polar((a[0]*v1[0] + v0[0], a[0]*v1[1] + v0[1]))]
         # if we end our turn at the same angle than we need to tack twice, so that we end up with a heading
         # closest to the next desired heading
         else:
             # use the midpoint of the v1 to tack, sail v2 fully, then tack back to the remainder of v1
             point1 = (a[0]*v1[0]*0.5 + v0[0], a[0]*v1[1]*0.5 + v0[1])
             point2 = (a[1]*v2[0] + point1[0], a[0]*v2[1] + point1[1])
-            return [utilsmath.euclidean_to_polar(point1), utilsmath.euclidean_to_polar(point2)]
+            return [utilsmath.cartesian_to_polar(point1), utilsmath.cartesian_to_polar(point2)]
              
 
     # micro planning (tacking)
     def __calculate_tacking(self):
         last_location = self.believed_location
         self.tacking = [self.believed_location]
-        prev_heading = self.believed_velocity[1]
+        prev_heading = self.believed_heading
         for i in range(len(self.way_points)):
             way_point = self.way_points[i]
 
@@ -274,11 +287,11 @@ class sailboat_control:
 
     def __smooth_tacking(self):
         smoothed = [self.tacking[0]]
-        prev_point = utilsmath.polar_to_euclidean(self.tacking[0])
+        prev_point = utilsmath.polar_to_cartesian(self.tacking[0])
         for i in range(1, len(self.tacking)-1):
             # smooth the corners just a bit
-            this_point = utilsmath.polar_to_euclidean(self.tacking[i])
-            next_point = utilsmath.polar_to_euclidean(self.tacking[i+1])
+            this_point = utilsmath.polar_to_cartesian(self.tacking[i])
+            next_point = utilsmath.polar_to_cartesian(self.tacking[i+1])
             v1 = [this_point[0] - prev_point[0], this_point[1] - prev_point[1]]
             v2 = [next_point[0] - this_point[0], next_point[1] - this_point[1]]
             v1_len = sqrt(v1[0]**2 + v1[1]**2)
@@ -292,9 +305,9 @@ class sailboat_control:
 
             # add an average point of all three
             pavg = [(this_point[0] + p1[0] + p2[0]) / 3.0, (this_point[1] + p1[1] + p2[1]) / 3.0]
-            smoothed.append(utilsmath.euclidean_to_polar(p1))
-            smoothed.append(utilsmath.euclidean_to_polar(pavg))
-            smoothed.append(utilsmath.euclidean_to_polar(p2))
+            smoothed.append(utilsmath.cartesian_to_polar(p1))
+            smoothed.append(utilsmath.cartesian_to_polar(pavg))
+            smoothed.append(utilsmath.cartesian_to_polar(p2))
 
             prev_point = this_point
 
@@ -314,26 +327,26 @@ class sailboat_control:
         self.replan = False
 
     def kalman(self):
-        x = matrix.matrix([[self.believed_location[0]], [self.believed_location[1]], [self.believed_velocity[0]], [self.believed_velocity[1]]])
-        u = matrix.matrix([[0.0], [0.0], [0.0], [0.0]])  # external motion
 
-        P = matrix.matrix([[0., 0., 0., 0.], [0., 0., 0., 0.], [0., 0., 1000., 0.], [0., 0., 0., 1000.]])  # initial uncertainty
-        F = matrix.matrix([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]])  # next state function
-        H = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.]])  # measurement function
-        R = matrix.matrix([[0.1, 0.], [0., 0.1]])  # measurement uncertainty
-        I = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])  # identity matrix
+        # Convert polar coordinates to cartesian
+        c = utilsmath.polar_to_cartesian(self.believed_location)
+        v = utilsmath.polar_to_cartesian((self.believed_speed, self.believed_heading))
+        m = utilsmath.polar_to_cartesian(self.measured_location)
+
+        x = matrix.matrix([[c[0]], [c[1]], [v[0]], [v[1]]])
 
         # prediction
-        x = (F * x) + u
-        P = F * P * F.transpose()
+        x = (self.kalman_F * x) + self.kalman_u
+        self.kalman_P = self.kalman_F * self.kalman_P * self.kalman_F.transpose()
 
         # measurement update
-        Z = matrix.matrix([[self.measured_location[0]], [self.measured_location[1]]])
-        y = Z - (H * x)
-        S = H * P * H.transpose() + R
-        K = P * H.transpose() * S.inverse()
+        Z = matrix.matrix([[m[0]], [m[1]]])
+        y = Z - (self.kalman_H * x)
+        S = self.kalman_H * self.kalman_P * self.kalman_H.transpose() + self.kalman_R
+        K = self.kalman_P * self.kalman_H.transpose() * S.inverse()
         x = x + (K * y)
-        P = (I - (K * H)) * P  # prediction
+        self.kalman_P = (self.kalman_I - (K * self.kalman_H)) * self.kalman_P  # prediction
 
-        self.believed_location = (x.value[0][0], x.value[1][0])
-        self.believed_velocity = (x.value[2][0], x.value[3][0])
+        self.believed_location = (utilsmath.cartesian_to_polar((x.value[0][0], x.value[1][0])))
+        self.believed_speed, self.believed_heading = utilsmath.cartesian_to_polar((x.value[2][0], x.value[3][0]))
+
