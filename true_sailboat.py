@@ -51,17 +51,14 @@ class true_sailboat:
             self.boom = utilsmath.normalize_angle(self.boom + controls[0] + random.gauss(0, self.boom_control_error))
 
         if controls[1] != 0:
-            self.rudder = utilsmath.normalize_angle(self.boom + controls[1] +random.gauss(0, self.rudder_control_error))
+            self.rudder = utilsmath.normalize_angle(self.rudder + controls[1] + random.gauss(0, self.rudder_control_error))
+            self.rudder = min(self.rudder, sim_config.max_rudder)
+            self.rudder = max(self.rudder, -sim_config.max_rudder)
 
     # ----------
     # update:
     # update the true_sailboat location based on the environment
     def update(self, env):
-        # Velocity vector will be added to boat's current position vector in order to calculate the new position.
-        # Magnitude of the velocity vector is boat's speed. Direction of the velocity vector is boat's heading,
-        # adjusted for rudder
-        self.heading = utilsmath.normalize_angle(self.heading + self.rudder/2.0)
-
         # Boat's speed depends on the angle at which wind is blowing at the boat, wind strength, and boom angle
         # todo: implement considering boom angle
         self.relative_wind_angle = utilsmath.normalize_angle(self.heading - env.current_wind[1])
@@ -90,7 +87,7 @@ class true_sailboat:
 
     # --------------
     # adjust_heading:
-    # adjust heading based on the rudder angle. Rudder angle goes from -pi/2 to pi. See plan.txt for more details.
+    # adjust heading based on the rudder angle. Rudder angle goes from -pi/2 to pi/2. See plan.txt for more details.
     def adjust_heading(self):
         # Simplified model: Change heading half amount of the rudder angle.
         self.heading = utilsmath.normalize_angle(self.heading + self.rudder/2.0)
@@ -124,3 +121,7 @@ class true_sailboat:
         heading = utilsmath.normalize_angle(self.heading + random.gauss(0.0, sim_config.heading_error))
 
         return location, heading
+
+    def measure_rudder(self):
+        return utilsmath.normalize_angle(self.rudder + random.gauss(0.0, sim_config.rudder_measure_error))
+

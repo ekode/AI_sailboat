@@ -11,7 +11,7 @@ import utilsmath
 # --------
 # Simulation
 #
-max_nr_of_steps = 15  # Maximum number of steps simulation is allowed to run
+max_nr_of_steps = 1000  # Maximum number of steps simulation is allowed to run
 
 
 # --------
@@ -41,8 +41,8 @@ heading_error = 0
 course_marker_error = 0.05
 boom_measure_error = utilsmath.rad(5)
 boom_control_error = utilsmath.rad(5)
-rudder_measure_error = utilsmath.rad(5)
-rudder_control_error = utilsmath.rad(5)
+rudder_measure_error = utilsmath.rad(0)
+rudder_control_error = utilsmath.rad(0)
 
 
 # --------
@@ -61,3 +61,9 @@ course_range = 100
 num_landmarks = 5
 num_course_marks = 5
 mark_buffer_distance = 10
+smooth_dist = 7.0 # make sure this is less than the mark_buffer_distance
+
+#
+# Boat control params
+max_rudder = utilsmath.rad(85)
+cte_ratio = (utilsmath.rad(5.0), utilsmath.rad(10.0), 0.0)

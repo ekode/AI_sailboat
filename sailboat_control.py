@@ -27,30 +27,51 @@ class sailboat_control:
         self.prev_believed_location = None
         self.measured_location = (0.0, 0.0)
         self.measured_heading = 0.0
+        self.measured_rudder = 0.0
         self.relative_wind_angle = 0.0
         self.mark_state = environment.mark_state(2, 0)
+        self.replan = True
+        self.last_cross_track_error = 0.0
+        self.int_cross_track_error = 0.0
 
     # return (boom_adjust_angle, rudder_adjust_angle)
     def boat_action(self):
         self.localize()
-        self.plan()
+        if self.replan:
+            self.plan()
 
-        # todo: calculate new rudder and boom angles
-        # for now, just turn the boat slightly down-wind
-        if self.relative_wind_angle < 0.0:
-            rudder = 0.2
+        return self.controls()
+
+    def controls(self):
+        projection_ratio, cross_track_error = self.__calculate_cte()
+        if projection_ratio >= 0:
+            diff_cross_track_error = cross_track_error - self.last_cross_track_error
+            self.int_cross_track_error += cross_track_error
+
+            desired_rudder = -cross_track_error * sim_config.cte_ratio[0]
+            desired_rudder += -diff_cross_track_error * sim_config.cte_ratio[1]
+            desired_rudder += -self.int_cross_track_error * sim_config.cte_ratio[2]
         else:
-            rudder = -0.2
+            to_next_tack = utilsmath.sub_vectors_polar(self.tacking[self.tacking_index+1], self.tacking[self.tacking_index])
+            desired_heading = to_next_tack[1]
+            desired_rudder = desired_heading - self.believed_heading
+
+
+        rudder_delta = utilsmath.normalize_angle(desired_rudder - self.measured_rudder)
+
+        self.last_cross_track_error = cross_track_error
 
         boom = 0.0
 
-        return boom, rudder
+        return boom, rudder_delta
 
     def boat_measure(self):
         self.measured_location, self.measured_heading = self.env.boats[self.boat_id].provide_measurements()
 
         if self.believed_location == (0.0, 0.0):
             self.believed_location = self.measured_location  # initial believed location
+
+        self.measured_rudder = self.env.boats[self.boat_id].measure_rudder()
 
     def localize(self):
         self.boat_measure()
@@ -64,6 +85,43 @@ class sailboat_control:
 
 
         self.relative_wind_angle = utilsmath.normalize_angle(self.believed_heading - self.env.current_wind[1])
+
+
+    # calculate the projection onto the expected line segment and distance from that segment
+    def __calculate_projection_distance(self):
+        if self.tacking_index + 1 >= len(self.tacking):
+            return 0.0, 0.0
+
+        tack_start = utilsmath.polar_to_euclidean(self.tacking[self.tacking_index])
+        tack_end = utilsmath.polar_to_euclidean(self.tacking[self.tacking_index + 1])
+        xy_location = utilsmath.polar_to_euclidean(self.believed_location)
+
+        segment_vec = [tack_end[0]-tack_start[0], tack_end[1]-tack_start[1]]
+        segment_len = sqrt(segment_vec[0] ** 2 + segment_vec[1] ** 2)
+        location_vec = [xy_location[0] - tack_start[0], xy_location[1] - tack_start[1]]
+        location_len = sqrt(location_vec[0] ** 2 + location_vec[1] ** 2)
+
+        # use 0, 0 if location is at start point
+        if location_len == 0:
+            return (0, 0)
+
+        projection_ratio = (segment_vec[0] * location_vec[0] + segment_vec[1] * location_vec[1]) / (segment_len ** 2)
+        distance = (-segment_vec[1] * location_vec[0] + segment_vec[0] * location_vec[1]) / segment_len
+
+        return (projection_ratio, distance)
+
+
+    # calculate the cross track error
+    # if the project is greater than 1, then we have crossed the end of this tack point: increment tacking_index
+    # and recalculate cte
+    def __calculate_cte(self):
+        projection_ratio, distance = self.__calculate_projection_distance()
+        # check if we have crossed the end of this tacking
+        if projection_ratio > 1.0:
+            self.tacking_index += 1
+            projection_ratio, distance = self.__calculate_projection_distance()
+        return projection_ratio, distance
+
 
 
     def __update_mark_state(self):
@@ -113,9 +171,14 @@ class sailboat_control:
             last_tack = tack
 
 
+    # find the angle on port or starboard side of desired angle that give the best speed
+    # limit the angle to +/- pi/2
     def __calculate_optimal_tack(self, to_port, desired_angle):
 
         wind_angle = self.env.current_wind[1]
+
+        # this is our estimate of speed in the direction of desired_angle
+        # returns -speed to allow scipy to optimize (find minimum)
         def directional_speed(delta_angle):
             true_angle = delta_angle + desired_angle
             stall_ratio = 0.05
@@ -128,6 +191,8 @@ class sailboat_control:
         return utilsmath.normalize_angle(best_angle.x + desired_angle)
 
 
+    # choose the angle closest to the base angle
+    # return (best, other)
     def __choose_angles(self, base, angle1, angle2):
         delta1 = abs(utilsmath.normalize_angle(base - angle1))
         delta2 = abs(utilsmath.normalize_angle(base - angle2))
@@ -136,6 +201,8 @@ class sailboat_control:
     def __is_angle_close(self, angle1, angle2, threshhold):
         return abs(utilsmath.normalize_angle(angle1 - angle2)) < threshhold
 
+    # find intermediate points between way_points
+    # we want to make sure we start and end close to the desired direction
     def __calculate_intermediates(self, last_location, to_waypoint, prev_heading, next_heading):
         # check optimal angle on port/starboard side of desired direction to next way_point
         port_optimal_angle = self.__calculate_optimal_tack(True, to_waypoint[1])
@@ -180,7 +247,7 @@ class sailboat_control:
     # micro planning (tacking)
     def __calculate_tacking(self):
         last_location = self.believed_location
-        self.tacking = []
+        self.tacking = [self.believed_location]
         prev_heading = self.believed_velocity[1]
         for i in range(len(self.way_points)):
             way_point = self.way_points[i]
@@ -205,12 +272,46 @@ class sailboat_control:
             last_location = way_point
             prev_heading = to_waypoint[1]
 
+    def __smooth_tacking(self):
+        smoothed = [self.tacking[0]]
+        prev_point = utilsmath.polar_to_euclidean(self.tacking[0])
+        for i in range(1, len(self.tacking)-1):
+            # smooth the corners just a bit
+            this_point = utilsmath.polar_to_euclidean(self.tacking[i])
+            next_point = utilsmath.polar_to_euclidean(self.tacking[i+1])
+            v1 = [this_point[0] - prev_point[0], this_point[1] - prev_point[1]]
+            v2 = [next_point[0] - this_point[0], next_point[1] - this_point[1]]
+            v1_len = sqrt(v1[0]**2 + v1[1]**2)
+            v2_len = sqrt(v2[0]**2 + v2[1]**2)
+
+            # offset away from the corner (just a bit)
+            smooth_offset1 = [v1[0]/v1_len * sim_config.smooth_dist, v1[1]/v1_len * sim_config.smooth_dist]
+            smooth_offset2 = [v2[0]/v2_len * sim_config.smooth_dist, v2[1]/v2_len * sim_config.smooth_dist]
+            p1 = [this_point[0] - smooth_offset1[0], this_point[1] - smooth_offset1[1]]
+            p2 = [this_point[0] + smooth_offset2[0], this_point[1] + smooth_offset2[1]]
+
+            # add an average point of all three
+            pavg = [(this_point[0] + p1[0] + p2[0]) / 3.0, (this_point[1] + p1[1] + p2[1]) / 3.0]
+            smoothed.append(utilsmath.euclidean_to_polar(p1))
+            smoothed.append(utilsmath.euclidean_to_polar(pavg))
+            smoothed.append(utilsmath.euclidean_to_polar(p2))
+
+            prev_point = this_point
+
+        smoothed.append(self.tacking[-1])
+        self.tacking = smoothed
+
+
 
     def plan(self):
         self.__update_mark_state()
         self.__calculate_way_points()
         self.__calculate_tacking()
-
+        # smoothing is minor but helps enough for some cases that were going off the rails!
+        self.__smooth_tacking()
+        # reset tacking index
+        self.tacking_index = 0
+        self.replan = False
 
     def kalman(self):
         x = matrix.matrix([[self.believed_location[0]], [self.believed_location[1]], [self.believed_velocity[0]], [self.believed_velocity[1]]])
