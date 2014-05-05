@@ -67,7 +67,7 @@ while not env.is_finished(i):
 
         polar_plot.true_boat(env.boats[boat_agent.boat_id].location)
         polar_plot.boat_belief(boat_agents[boat_agent.boat_id].believed_location)
-        polar_plot.boat_measured(boat_agents[boat_agent.boat_id].measured_location)
+        #polar_plot.boat_measured(boat_agents[boat_agent.boat_id].measured_location)
         polar_plot.draw()
 
         if i == 0:

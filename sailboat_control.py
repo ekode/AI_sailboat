@@ -48,12 +48,17 @@ class sailboat_control:
         self.kalman_R = matrix.matrix([[0.01, 0.], [0., 0.01]])  # measurement uncertainty
         self.kalman_I = matrix.matrix([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])  # identity matrix
 
+        self.igor_target_tack = 1
+
 
     # return (boom_adjust_angle, rudder_adjust_angle)
     def boat_action(self):
         self.localize()
         if self.replan:
             self.plan()
+
+        if sim_config.use_igor:
+            return self.igor_controls()
 
         return self.controls()
 
@@ -348,5 +353,34 @@ class sailboat_control:
         self.kalman_P = (self.kalman_I - (K * self.kalman_H)) * self.kalman_P  # prediction
 
         self.believed_location = (utilsmath.cartesian_to_polar((x.value[0][0], x.value[1][0])))
-        self.believed_speed, self.believed_heading = utilsmath.cartesian_to_polar((x.value[2][0], x.value[3][0]))
+        #self.believed_speed, self.believed_heading = utilsmath.cartesian_to_polar((x.value[2][0], x.value[3][0]))
 
+
+    def igor_controls(self):
+        # Check if you are close enough to the target tack point. If so, switch to the next tack point.
+        tack_point_distance = utilsmath.distance_polar(self.believed_location, self.tacking[self.igor_target_tack])
+        while tack_point_distance < 2.0:
+            self.igor_target_tack += 1
+            tack_point_distance = utilsmath.distance_polar(self.believed_location, self.tacking[self.igor_target_tack])
+
+        dir = utilsmath.sub_vectors_polar(self.tacking[self.igor_target_tack], self.believed_location)
+        desired_rudder = utilsmath.normalize_angle(dir[1] - self.believed_heading)
+
+        self.measured_rudder = self.env.boats[self.boat_id].measure_rudder()
+
+        rudder_delta = desired_rudder - self.measured_rudder
+
+        """
+        print ' '
+        print 'target tack', self.igor_target_tack, self.tacking[self.igor_target_tack]
+        print 'tack point distance', tack_point_distance
+        #print 'alpha', alpha
+        print 'dir', dir
+        print 'desired rudder', desired_rudder
+        print 'measured rudder', self.measured_rudder
+        print 'rudder delta', rudder_delta
+        """
+
+        boom = 0.0
+
+        return boom, rudder_delta

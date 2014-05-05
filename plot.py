@@ -59,6 +59,11 @@ class plot:
         plt.draw()
         #self.fig.draw()
 
+
+    def clear(self):
+        plt.cla()
+
+
     def plot_course(self, env, polar_plot):
 
         # draw arrow for start direction

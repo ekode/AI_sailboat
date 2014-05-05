@@ -27,11 +27,15 @@ def report(env, boat_agents, i):
                 print 'real speed', env.boats[b_id].speed
                 print 'real heading', env.boats[b_id].heading
                 print 'wind angle', env.boats[b_id].relative_wind_angle
+                print 'rudder', env.boats[b_id].rudder
             if sim_config.print_boat_belief:
                 print ' '
                 print 'bel. position', boat_agents[b_id].believed_location
                 print 'bel. speed', boat_agents[b_id].believed_speed
                 print 'bel. heading', boat_agents[b_id].believed_heading
+                print 'meas heading', boat_agents[b_id].measured_heading
+
+    print '---end step---'
 
 
 def start():

@@ -42,6 +42,7 @@ class true_sailboat:
         self.rudder_measure_error = rudder_measure_error
         self.rudder_control_error = rudder_control_error
         self.mark_state = initial_mark_state
+        self.previous_speed = 0.0
 
     # ----------
     # updateControls:
@@ -90,7 +91,7 @@ class true_sailboat:
     # adjust heading based on the rudder angle. Rudder angle goes from -pi/2 to pi/2. See plan.txt for more details.
     def adjust_heading(self):
         # Simplified model: Change heading half amount of the rudder angle.
-        self.heading = utilsmath.normalize_angle(self.heading + self.rudder/2.0)
+        self.heading = utilsmath.normalize_angle(self.heading + self.rudder/1.0)
 
     # --------------
     # calculate_speed:
@@ -105,6 +106,14 @@ class true_sailboat:
 
         # Using normal distribution function
         speed = (max_speed + stall_range)*e**(-(wind_angle**2)/2) - stall_range
+
+        # Add momentum. Speed can not decrease or increase more than 20% at the time.
+        if self.previous_speed > 1.0:
+            if speed > self.previous_speed*(1+sim_config.speed_momentum):
+                speed = self.previous_speed*(1+sim_config.speed_momentum)
+            elif speed < self.previous_speed*(1-sim_config.speed_momentum):
+                speed = self.previous_speed*(1-sim_config.speed_momentum)
+        self.previous_speed = speed
 
         return speed
 

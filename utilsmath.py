@@ -60,6 +60,7 @@ def add_vectors_polar(v1, v2):
 
     return cartesian_to_polar((rx, ry))
 
+
 def sub_vectors_polar(v1, v2):
     return add_vectors_polar(v1, (-v2[0], v2[1]))
 
@@ -70,6 +71,11 @@ def polar_to_cartesian(p):
 
 def cartesian_to_polar(c):
     return hypot(c[0], c[1]), atan2(c[1], c[0])
+
+
+# calculate distance for two points given in polar coordinates
+def distance_polar(a, b):
+    return sqrt(a[0]**2 + b[0]**2 - 2*a[0]*b[0]*cos(a[1] - b[1]))
 
 
 def solve2dLinear(a, b, c, d, e, f):
