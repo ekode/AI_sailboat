@@ -11,7 +11,7 @@ import utilsmath
 # --------
 # Simulation
 #
-max_nr_of_steps = 200  # Maximum number of steps simulation is allowed to run
+max_nr_of_steps = 1000  # Maximum number of steps simulation is allowed to run
 
 
 # --------

@@ -69,7 +69,20 @@ class sailboat_control:
         else:
             to_next_tack = utilsmath.sub_vectors_polar(self.tacking[self.tacking_index+1], self.tacking[self.tacking_index])
             desired_heading = to_next_tack[1]
-            desired_rudder = desired_heading - self.believed_heading
+            #desired_rudder = desired_heading - self.believed_heading
+            desired_rudder = desired_heading - self.measured_heading
+
+            """
+            print "tacking_index:{0}".format(self.tacking_index)
+            print "tacking[{0}]:{1}".format(self.tacking_index, self.tacking[self.tacking_index])
+            print "tacking[{0}]:{1}".format(self.tacking_index+1, self.tacking[self.tacking_index+1])
+            print "to_next_tack:{0}".format(to_next_tack)
+            print "believed_heading:{0}".format(utilsmath.deg( self.believed_heading))
+            print "measured_heading:{0}".format(utilsmath.deg( self.measured_heading))
+            print "desired_heading:{0}".format(utilsmath.deg( desired_heading))
+            print "desired_rudder:{0}".format(utilsmath.deg(desired_rudder))
+            import pdb; pdb.set_trace()
+            """
 
 
         rudder_delta = utilsmath.normalize_angle(desired_rudder - self.measured_rudder)
@@ -81,12 +94,11 @@ class sailboat_control:
         return boom, rudder_delta
 
 
-        self.measured_rudder = self.env.boats[self.boat_id].measure_rudder()
-
     def localize(self):
         self.measured_location, self.measured_heading, self.measured_speed = self.env.boats[self.boat_id].provide_measurements()
         self.believed_heading = self.measured_heading
         self.believed_speed = self.measured_speed
+        self.measured_rudder = self.env.boats[self.boat_id].measure_rudder()
 
         if self.believed_location == (0.0, 0.0):
             # Initial location - do not run Kalman
